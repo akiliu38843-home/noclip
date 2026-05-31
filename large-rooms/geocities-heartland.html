@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>★ Welcome to Heartland Neighborhood ★ - GeoCities</title>
+<style>
+/* ============================================================
+   90s GeoCities Heartland 邻居街区 · 后室大房间 v0.1
+   配色: 暖黄 / 棕 / 深蓝链接 · 致敬 1997-2001 GeoCities default
+   开源参考:
+   - oocities.org 真镜像 (内容)
+   - despens/Geocities One Terabyte of Kilobyte Age (灵感)
+   - 5t3ph/css-webring (webring 设计原型)
+============================================================ */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Comic Sans MS', 'MS UI Gothic', '宋体', sans-serif;
+  background: #f5deb3;
+  background-image:
+    repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(180,130,50,0.08) 50px, rgba(180,130,50,0.08) 51px),
+    repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(180,130,50,0.08) 50px, rgba(180,130,50,0.08) 51px);
+  color: #000080;
+  font-size: 14px;
+}
+
+/* ============================================================
+   进入仪式 · webring 旋转动画
+============================================================ */
+#ritual-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffd700;
+  font-family: 'Comic Sans MS', sans-serif;
+  text-align: center;
+}
+#ritual-overlay.hide { display: none; }
+
+.webring-banner {
+  background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b);
+  color: #000;
+  padding: 8px 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  font-size: 13px;
+  border: 2px ridge #ffd700;
+  margin-bottom: 18px;
+  animation: ringspin 8s linear infinite;
+}
+@keyframes ringspin {
+  0%, 100% { transform: skewX(0deg); }
+  25% { transform: skewX(-3deg); }
+  75% { transform: skewX(3deg); }
+}
+.ritual-text {
+  font-size: 22px;
+  color: #ffd700;
+  margin: 14px 0;
+  text-shadow: 2px 2px 0 #b8860b;
+}
+.ritual-sub {
+  color: #888;
+  font-size: 12px;
+  margin-top: 10px;
+  font-style: italic;
+}
+.ritual-bar {
+  width: 280px;
+  height: 8px;
+  background: #333;
+  border: 1px solid #ffd700;
+  margin: 14px auto;
+  overflow: hidden;
+}
+.ritual-bar > div {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  animation: dialup 3.5s linear forwards;
+}
+@keyframes dialup { to { width: 100%; } }
+
+/* ============================================================
+   邻居主页面 (仪式完后显示)
+============================================================ */
+.page-wrapper { display: none; }
+.page-wrapper.show { display: block; }
+
+/* 顶部 banner */
+.top-banner {
+  background: linear-gradient(180deg, #ffd700, #f59e0b);
+  color: #800000;
+  text-align: center;
+  padding: 16px 20px;
+  border-bottom: 3px ridge #b8860b;
+  position: relative;
+}
+.top-banner h1 {
+  font-size: 26px;
+  margin: 0 0 6px;
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 0 #ffe4b5, 4px 4px 0 rgba(128,0,0,0.3);
+}
+.top-banner .blink-text {
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+.top-banner .subtitle {
+  font-size: 12px;
+  color: #000080;
+  font-style: italic;
+}
+
+/* 角落装饰 GIF (CSS 模拟) */
+.corner-gif {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  font-size: 28px;
+  line-height: 1;
+}
+.corner-gif.tl { top: 8px; left: 12px; }
+.corner-gif.tr { top: 8px; right: 12px; animation: spin 4s linear infinite; }
+.corner-gif.bl { bottom: -18px; left: 12px; }
+.corner-gif.br { bottom: -18px; right: 12px; animation: bounce 1s ease-in-out infinite alternate; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes bounce { to { transform: translateY(-6px); } }
+
+/* Webring 行 */
+.webring {
+  background: #fff8dc;
+  border: 2px ridge #b8860b;
+  padding: 8px 14px;
+  margin: 10px auto;
+  max-width: 720px;
+  text-align: center;
+  font-size: 13px;
+}
+.webring a {
+  color: #800000;
+  text-decoration: underline;
+  margin: 0 14px;
+  font-weight: bold;
+}
+.webring a:hover { color: #ff4500; cursor: pointer; }
+.webring .ringid { color: #555; font-size: 11px; font-family: 'Courier New', monospace; }
+
+/* 主布局: 左侧网格 + 右侧 iframe */
+.main-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 14px;
+  max-width: 1100px;
+  margin: 14px auto;
+  padding: 0 14px;
+}
+
+/* 邻居网格 */
+.house-grid {
+  background: #fffacd;
+  border: 3px ridge #b8860b;
+  padding: 10px;
+}
+.grid-header {
+  background: #800000;
+  color: #ffd700;
+  padding: 6px 10px;
+  font-size: 13px;
+  margin: -10px -10px 10px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.houses {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.house {
+  background: #f0e68c;
+  border: 2px outset #b8860b;
+  padding: 6px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 10px;
+  color: #000080;
+  transition: background 0.15s;
+  position: relative;
+}
+.house:hover { background: #ffd700; }
+.house:active { border-style: inset; }
+.house.visited { background: #d2b48c; }
+.house.visited::after {
+  content: '✓';
+  position: absolute;
+  top: 1px; right: 3px;
+  color: #006400;
+  font-size: 12px;
+  font-weight: bold;
+}
+.house .house-icon {
+  font-size: 22px;
+  line-height: 1;
+  display: block;
+  margin-bottom: 3px;
+}
+.house .house-id {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: #555;
+}
+.house .house-date {
+  font-size: 8px;
+  color: #888;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* iframe 主显示 */
+.house-view {
+  background: #fff;
+  border: 3px ridge #b8860b;
+  min-height: 500px;
+  position: relative;
+}
+.view-header {
+  background: #000080;
+  color: #ffd700;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.view-header .ctrl {
+  background: #ffd700;
+  color: #000;
+  border: 1px outset #ffd700;
+  padding: 1px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.view-iframe {
+  width: 100%;
+  height: 520px;
+  border: 0;
+  background: #fff;
+}
+.view-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 520px;
+  color: #888;
+  font-style: italic;
+  font-size: 14px;
+  text-align: center;
+  padding: 30px;
+}
+.view-placeholder .big-arrow {
+  font-size: 64px;
+  margin-bottom: 14px;
+  opacity: 0.4;
+}
+
+/* 底部 footer */
+.footer {
+  background: #fffacd;
+  border-top: 3px ridge #b8860b;
+  padding: 16px;
+  text-align: center;
+  font-size: 11px;
+  color: #555;
+  margin-top: 30px;
+}
+.footer .counter {
+  background: #000;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  padding: 4px 12px;
+  display: inline-block;
+  letter-spacing: 3px;
+  border: 1px ridge #00ff00;
+  margin: 6px 0;
+}
+.footer .guestbook {
+  color: #800000;
+  text-decoration: underline;
+  cursor: pointer;
+  margin: 0 8px;
+}
+.footer .since {
+  font-style: italic;
+  margin-top: 8px;
+  display: block;
+}
+
+/* 隐藏出口 · 角落邮箱 GIF */
+.exit-mailbox {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  font-size: 32px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+  z-index: 100;
+  background: #fff8dc;
+  padding: 4px 8px;
+  border: 1px solid #b8860b;
+  border-radius: 4px;
+}
+.exit-mailbox:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+.exit-mailbox::after {
+  content: '邮箱';
+  display: block;
+  font-size: 9px;
+  font-family: 'Comic Sans MS', sans-serif;
+  color: #800000;
+  margin-top: -4px;
+  letter-spacing: 1px;
+}
+
+/* "Best viewed" 老式横幅 */
+.best-viewed {
+  text-align: center;
+  font-size: 11px;
+  color: #800000;
+  margin: 10px;
+  font-style: italic;
+}
+
+/* Marquee 滚动文字 */
+.marquee-bar {
+  background: #800000;
+  color: #ffd700;
+  padding: 4px 0;
+  overflow: hidden;
+  font-size: 12px;
+}
+.marquee-bar > span {
+  display: inline-block;
+  animation: marquee 18s linear infinite;
+  white-space: nowrap;
+  padding-left: 100%;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@media (max-width: 720px) {
+  .main-layout { grid-template-columns: 1fr; }
+  .houses { grid-template-columns: repeat(2, 1fr); }
+  .top-banner h1 { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     进入仪式 overlay
+============================================================ -->
+<div id="ritual-overlay">
+  <div class="webring-banner">★ HEARTLAND WEBRING ★ ESTABLISHED 1997 ★</div>
+  <div class="ritual-text">Connecting to neighborhood...</div>
+  <div class="ritual-bar"><div></div></div>
+  <div class="ritual-sub">dial-up tone · 49.6 kbps · please wait...</div>
+</div>
+
+<!-- ============================================================
+     邻居主页
+============================================================ -->
+<div class="page-wrapper" id="page">
+
+<div class="top-banner">
+  <div class="corner-gif tl">🌻</div>
+  <div class="corner-gif tr">⭐</div>
+  <h1>★ <span class="blink-text">Welcome</span> to Heartland Neighborhood ★</h1>
+  <div class="subtitle">— GeoCities · "It's where we live!" · A community of 30 webmasters —</div>
+</div>
+
+<div class="marquee-bar">
+  <span>★ This site is best viewed with Netscape Navigator 3.0 · 800x600 resolution ★ Updated daily by neighborhood watchman · Sign the guestbook! · 16,777,216 colors ★ HEARTLAND RULES! ★</span>
+</div>
+
+<div class="webring">
+  <span class="ringid">[webring 0x4A1B]</span>
+  <a onclick="ringNav('prev')">◄ Prev</a>
+  <a onclick="ringNav('random')">★ Random Neighbor ★</a>
+  <a onclick="ringNav('next')">Next ►</a>
+  <a onclick="ringNav('list')">[List Sites]</a>
+</div>
+
+<div class="main-layout">
+
+  <!-- 左侧: 30 个房子网格 -->
+  <div class="house-grid">
+    <div class="grid-header">★ THE NEIGHBORHOOD ★ 30 HOUSES</div>
+    <div class="houses" id="houses"></div>
+  </div>
+
+  <!-- 右侧: iframe 当前查看的房子 -->
+  <div class="house-view">
+    <div class="view-header">
+      <span id="view-title">📁 No house selected · click a neighbor →</span>
+      <button class="ctrl" onclick="closeView()">×</button>
+    </div>
+    <div id="view-content">
+      <div class="view-placeholder">
+        <div class="big-arrow">←</div>
+        <div>Click any house on the left to peek inside.</div>
+        <div style="margin-top:10px;font-size:11px;color:#aaa;">Some neighbors haven't logged in for 25+ years.<br>Their pages may load slowly or refuse.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="best-viewed">
+  ✦ Best viewed with Netscape Navigator 3.0 · 800x600 · 256 colors ✦
+</div>
+
+<div class="footer">
+  <div>You are visitor <span class="counter" id="counter">0000317</span></div>
+  <a class="guestbook" onclick="alert('Guestbook coming soon™ (since 1998)')">📖 Sign my guestbook</a>
+  <a class="guestbook" onclick="alert('mailto: ' + currentHouse?.id + '@webtv.net (not implemented)')">✉ Email webmaster</a>
+  <span class="since">Established · Last updated 1999-08-14 03:47 · © A Webmaster Of Earth</span>
+</div>
+
+<!-- 隐藏出口 -->
+<div class="exit-mailbox" onclick="exitToBackrooms()" title="Click to leave neighborhood">📬</div>
+
+</div>
+
+<script>
+// ============================================================
+// 邻居数据 · 30 个房子
+// URL 来源: oocities mirror + Wayback if_ mode
+// 每个 house 有: id (虚构 webmaster 名), url, icon, last_updated
+// ============================================================
+const HOUSES = [
+  // Heartland
+  { id: 'plainsfolk93', neighborhood: 'Heartland/Plains', url: 'https://www.oocities.org/heartland/plains/4231/', icon: '🏡', updated: '1999-04-22' },
+  { id: 'pony_lover',   neighborhood: 'Heartland/Meadows', url: 'https://www.oocities.org/heartland/meadows/3142/', icon: '🐴', updated: '1998-11-30' },
+  { id: 'farm_girl_97', neighborhood: 'Heartland/Acres', url: 'https://www.oocities.org/heartland/acres/2891/', icon: '🌾', updated: '2001-06-14' },
+  { id: 'cornhusker',   neighborhood: 'Heartland/Park', url: 'https://www.oocities.org/heartland/park/5102/', icon: '🌽', updated: '1999-08-07' },
+
+  // Hollywood
+  { id: 'movie_buff_x', neighborhood: 'Hollywood/Hills', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Hollywood/Hills/4521/', icon: '🎬', updated: '2000-02-14' },
+  { id: 'star_chaser',  neighborhood: 'Hollywood/Boulevard', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Hollywood/Boulevard/7531/', icon: '⭐', updated: '1998-09-23' },
+  { id: 'oscar_lover',  neighborhood: 'Hollywood/Studio', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Hollywood/Studio/2417/', icon: '🏆', updated: '1999-12-31' },
+
+  // Athens (academia)
+  { id: 'plato_fan',    neighborhood: 'Athens/Forum', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Athens/Forum/3401/', icon: '📚', updated: '1997-10-15' },
+  { id: 'philosopher',  neighborhood: 'Athens/Academy', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Athens/Academy/1234/', icon: '🏛️', updated: '1998-05-20' },
+  { id: 'wisdom_seeker',neighborhood: 'Athens/Acropolis', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Athens/Acropolis/5678/', icon: '🦉', updated: '2000-03-08' },
+
+  // Area51 (UFO/sci-fi)
+  { id: 'truth_hunter', neighborhood: 'Area51/Hangar', url: 'https://web.archive.org/web/2000if_/http://www.geocities.com/Area51/Hangar/9182/', icon: '🛸', updated: '1998-07-04' },
+  { id: 'roswell_kid',  neighborhood: 'Area51/Corridor', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Area51/Corridor/4017/', icon: '👽', updated: '1999-10-31' },
+  { id: 'xfiles_fan',   neighborhood: 'Area51/Vault', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Area51/Vault/8888/', icon: '🔮', updated: '2000-05-13' },
+
+  // SiliconValley (geek)
+  { id: 'code_warrior', neighborhood: 'SiliconValley/Bay', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/SiliconValley/Bay/2840/', icon: '💻', updated: '1999-01-01' },
+  { id: 'unix_geek',    neighborhood: 'SiliconValley/Lakes', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/SiliconValley/Lakes/6420/', icon: '🖥️', updated: '1998-12-25' },
+
+  // EnchantedForest (fantasy)
+  { id: 'elf_maiden',   neighborhood: 'EnchantedForest/Glade', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/EnchantedForest/Glade/1492/', icon: '🧚', updated: '1999-06-21' },
+  { id: 'dragon_rider', neighborhood: 'EnchantedForest/Cottage', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/EnchantedForest/Cottage/7777/', icon: '🐉', updated: '2000-10-31' },
+
+  // Tokyo (anime / Asia)
+  { id: 'anime_grrl',   neighborhood: 'Tokyo/Towers', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Tokyo/Towers/5421/', icon: '🎌', updated: '1999-11-11' },
+  { id: 'manga_otaku',  neighborhood: 'Tokyo/Harbor', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Tokyo/Harbor/3210/', icon: '🍣', updated: '2001-02-22' },
+
+  // SoHo (artsy)
+  { id: 'art_nouveau',  neighborhood: 'SoHo/Lofts', url: 'https://www.oocities.org/soho/lofts/4444/', icon: '🎨', updated: '2000-04-17' },
+  { id: 'poet_eternal', neighborhood: 'SoHo/Studios', url: 'https://www.oocities.org/soho/studios/6789/', icon: '✒️', updated: '1998-08-19' },
+
+  // Petsburgh (pets)
+  { id: 'cat_lady_97',  neighborhood: 'Petsburgh/PetPark', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Petsburgh/PetPark/8765/', icon: '🐱', updated: '1999-05-30' },
+  { id: 'dog_dad',      neighborhood: 'Petsburgh/Park', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Petsburgh/Park/2341/', icon: '🐶', updated: '2000-09-12' },
+
+  // RodeoDrive (fashion)
+  { id: 'fashionista',  neighborhood: 'RodeoDrive/Vans', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/RodeoDrive/Vans/3456/', icon: '👗', updated: '1999-07-22' },
+
+  // Wellesley (academia)
+  { id: 'bookworm99',   neighborhood: 'Wellesley/Garden', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Wellesley/Garden/9999/', icon: '📖', updated: '1998-03-04' },
+
+  // CapeCanaveral (space)
+  { id: 'apollo_fan',   neighborhood: 'CapeCanaveral/Hangar', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/CapeCanaveral/Hangar/4040/', icon: '🚀', updated: '1999-07-20' },
+
+  // Yosemite (outdoors)
+  { id: 'mountain_man', neighborhood: 'Yosemite/Trails', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Yosemite/Trails/1776/', icon: '🏔️', updated: '2000-08-08' },
+
+  // Nashville (music)
+  { id: 'country_soul', neighborhood: 'Nashville/Stage', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/Nashville/Stage/2525/', icon: '🎸', updated: '1999-03-15' },
+
+  // BourbonStreet (jazz)
+  { id: 'jazz_cat',     neighborhood: 'BourbonStreet/Quarter', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/BourbonStreet/Quarter/6363/', icon: '🎷', updated: '2000-12-31' },
+
+  // TimesSquare (urban)
+  { id: 'big_apple',    neighborhood: 'TimesSquare/Lobby', url: 'https://web.archive.org/web/2001if_/http://www.geocities.com/TimesSquare/Lobby/9090/', icon: '🗽', updated: '1999-09-11' },
+
+  // Vienna (classical)
+  { id: 'mozart_fan',   neighborhood: 'Vienna/Strasse', url: 'https://web.archive.org/web/2002if_/http://www.geocities.com/Vienna/Strasse/1791/', icon: '🎻', updated: '1998-12-05' }
+];
+
+// ============================================================
+// 状态 + 当前选中
+// ============================================================
+const STORE = 'geocities-heartland-v1';
+let currentHouse = null;
+const visited = new Set(JSON.parse(localStorage.getItem(STORE + '-visited') || '[]'));
+let visitorCount = parseInt(localStorage.getItem(STORE + '-counter') || '317');
+
+function saveVisited() {
+  localStorage.setItem(STORE + '-visited', JSON.stringify([...visited]));
+  localStorage.setItem(STORE + '-counter', visitorCount.toString());
+}
+
+// ============================================================
+// 渲染 30 个 houses
+// ============================================================
+function renderHouses() {
+  const grid = document.getElementById('houses');
+  grid.innerHTML = HOUSES.map((h, i) => `
+    <div class="house ${visited.has(h.id) ? 'visited' : ''}" data-idx="${i}" onclick="openHouse(${i})">
+      <div class="house-icon">${h.icon}</div>
+      <div class="house-id">${h.id}</div>
+      <div class="house-date">${h.updated}</div>
+    </div>
+  `).join('');
+}
+
+function openHouse(idx) {
+  const h = HOUSES[idx];
+  currentHouse = h;
+  visited.add(h.id);
+  saveVisited();
+  document.getElementById('view-title').textContent = `🏠 ${h.id} · ${h.neighborhood}`;
+  document.getElementById('view-content').innerHTML = `
+    <iframe class="view-iframe"
+            src="${h.url}"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            onload="console.log('loaded ${h.id}')">
+    </iframe>
+  `;
+  renderHouses();
+}
+
+function closeView() {
+  currentHouse = null;
+  document.getElementById('view-title').textContent = '📁 No house selected · click a neighbor →';
+  document.getElementById('view-content').innerHTML = `
+    <div class="view-placeholder">
+      <div class="big-arrow">←</div>
+      <div>Click any house on the left to peek inside.</div>
+      <div style="margin-top:10px;font-size:11px;color:#aaa;">Some neighbors haven't logged in for 25+ years.<br>Their pages may load slowly or refuse.</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// Webring 导航
+// ============================================================
+function ringNav(dir) {
+  if (dir === 'random' || !currentHouse) {
+    const idx = Math.floor(Math.random() * HOUSES.length);
+    openHouse(idx);
+    return;
+  }
+  const curIdx = HOUSES.findIndex(h => h.id === currentHouse.id);
+  if (dir === 'prev') {
+    const idx = (curIdx - 1 + HOUSES.length) % HOUSES.length;
+    openHouse(idx);
+  } else if (dir === 'next') {
+    const idx = (curIdx + 1) % HOUSES.length;
+    openHouse(idx);
+  } else if (dir === 'list') {
+    closeView();
+    document.querySelector('.house-grid').scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+// ============================================================
+// 退出 · postMessage 到父页 (如果在 iframe 里被嵌, 通知后室主产品换门)
+// ============================================================
+function exitToBackrooms() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'geocities-heartland' }, '*');
+  } else {
+    // 独立打开时, 显示一个友善提示
+    if (confirm('离开 Heartland 邻居街区?\n(独立模式 · 关闭窗口即可)')) {
+      window.close();
+    }
+  }
+}
+
+// ESC 也触发 exit
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitToBackrooms();
+});
+
+// ============================================================
+// 访客计数器 (每次进站 +1)
+// ============================================================
+function updateCounter() {
+  visitorCount++;
+  saveVisited();
+  document.getElementById('counter').textContent = String(visitorCount).padStart(7, '0');
+}
+
+// ============================================================
+// 进入仪式 (3.5s 拨号动画)
+// ============================================================
+function playDialupSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    // 模拟拨号: 两组 oscillator + 衰减
+    [600, 800, 1100, 1400, 600].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.03, now + i * 0.6);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.6 + 0.4);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now + i * 0.6);
+      osc.stop(now + i * 0.6 + 0.4);
+    });
+    // 白噪声 (静电) 1 秒
+    const noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
+    const ch = noiseBuf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * 0.1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    const ngain = ctx.createGain();
+    ngain.gain.setValueAtTime(0.015, now + 3);
+    ngain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
+    noise.connect(ngain); ngain.connect(ctx.destination);
+    noise.start(now + 3);
+    noise.stop(now + 3.5);
+  } catch (e) {}
+}
+
+function init() {
+  renderHouses();
+  document.getElementById('counter').textContent = String(visitorCount).padStart(7, '0');
+
+  // 进入仪式
+  setTimeout(playDialupSound, 50);
+  setTimeout(() => {
+    document.getElementById('ritual-overlay').classList.add('hide');
+    document.getElementById('page').classList.add('show');
+    updateCounter();
+  }, 3500);
+}
+
+init();
+</script>
+
+</body>
+</html>

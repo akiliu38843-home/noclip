@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>后室档案 v3 · 类型可见 · 档案室/玩具房/幻境室/杂物间/休息室</title>
+<title>后室档案 v4 · 大房间 (Heartland) + 类型可见 + 规则随机</title>
 <style>
 :root {
   --bg: #0a0806;
@@ -395,8 +395,8 @@ footer { text-align: center; color: var(--text-dim); font-size: 11px; margin-top
 <div class="container">
 
 <header>
-<h1>后 室 档 案 v3</h1>
-<p class="subtitle">— 类型可见 · 档案室 · 玩具房 · 幻境室 · 杂物间 · 休息室 —</p>
+<h1>后 室 档 案 v4</h1>
+<p class="subtitle">— 大房间 (Heartland 邻居街区) + 类型可见 + 规则随机 + 5 机制 —</p>
 </header>
 
 <div class="info-bar">
@@ -454,11 +454,15 @@ footer { text-align: center; color: var(--text-dim); font-size: 11px; margin-top
     · 10s 不动屏变红<br>
     · 邻接图 + 深度 + 集群粘着<br>
     <br>
-    <strong style="color:var(--good)">v3 新增 (类型可见)</strong><br>
+    <strong style="color:var(--good)">v3 (类型可见)</strong><br>
     · 5 类: <span style="color:var(--t-archive)">档案</span> / <span style="color:var(--t-toy)">玩具</span> / <span style="color:var(--t-mirage)">幻境</span> / <span style="color:var(--t-junk)">杂物</span> / <span style="color:var(--t-haven)">休息</span><br>
-    · 17 个真休息室 URL<br>
-    · 顶部 12 时间线<br>
-    · 信息栏显类型
+    · 顶部 12 时间线 + 信息栏显类型<br>
+    <br>
+    <strong style="color:var(--good)">v4 新增 (大房间)</strong><br>
+    · 🏘️ Heartland 邻居街区 (Web 1)<br>
+    · 10% 概率进大房间<br>
+    · 内部漫游 · idle 暂停<br>
+    · ESC / 角落邮箱退出
   </div>
 </aside>
 
@@ -491,6 +495,12 @@ const SHELLS = [
   { id: 'msn',      name: 'MSN Messenger' },
   { id: 'bbs',      name: 'BBS ANSI' }
 ];
+
+// v4 大房间 (Web 1/2/3 路线, 第一间: Heartland 邻居街区)
+const LARGE_ROOMS = [
+  { id: 'geocities-heartland', file: 'large-rooms/geocities-heartland.html', name: 'Heartland 邻居街区', web: 1, icon: '🏘️' }
+];
+const LARGE_ROOM_PROBABILITY = 0.10;  // 10% 概率进大房间
 
 
 // 共享脚本: 注入到每个外壳 iframe, 让 close 按钮触发 nextDoor
@@ -1026,6 +1036,16 @@ function markInteraction() {
 }
 
 function tickIdle() {
+  // v4: 大房间内, 暂停 idle 红屏机制 (用户在内部漫游)
+  const state = getState();
+  if (state.inLargeRoom) {
+    document.getElementById('red-vignette').style.setProperty('--rv-intensity', '0');
+    document.getElementById('idle-warning').classList.remove('show');
+    document.getElementById('idle-secs').textContent = '—';
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    return;
+  }
+
   const idle = (Date.now() - lastInteraction) / 1000;
   document.getElementById('idle-secs').textContent = Math.floor(idle);
   const rv = document.getElementById('red-vignette');
@@ -1108,6 +1128,21 @@ async function requestDoor() {
     await showFullscreen('你 · 被 · 记 录 · 了', 3000);
   }
 
+  // v4 NEW: 2.5) 10% 概率进大房间 (Web1/2/3 路线)
+  if (Math.random() < LARGE_ROOM_PROBABILITY && !state.inLargeRoom) {
+    const room = LARGE_ROOMS[Math.floor(Math.random() * LARGE_ROOMS.length)];
+    state.inLargeRoom = room.id;
+    state.currentShell = '__large__';
+    state.currentUrl = room.name;
+    state.currentType = null;
+    saveState(state);
+    document.getElementById('stage-content').innerHTML = `<iframe id="stage-frame" src="${room.file}" style="width:100%;height:600px;border:0;"></iframe>`;
+    refreshUI();
+    inTransition = false;
+    return;
+  }
+  state.inLargeRoom = null;
+
   // 3) 走廊转场 10% 概率
   if (Math.random() < 0.1) {
     const corrDur = 3000 + Math.random() * 2000;
@@ -1174,9 +1209,17 @@ async function requestDoor() {
 function refreshUI() {
   const state = getState();
   document.getElementById('counter').textContent = state.count || 0;
-  const curShell = SHELLS.find(s => s.id === state.currentShell);
-  document.getElementById('shell-name').textContent = state.currentShell === 'level-fun' ? '⚠ Level Fun (No.47)' : (curShell ? curShell.name : '—');
-  document.getElementById('url-display').textContent = state.currentUrl || '—';
+
+  // v4 NEW: 大房间显示
+  if (state.inLargeRoom) {
+    const room = LARGE_ROOMS.find(r => r.id === state.inLargeRoom);
+    document.getElementById('shell-name').textContent = room ? `${room.icon} ${room.name} (Web ${room.web} 大房)` : '🏛️ 大房间';
+    document.getElementById('url-display').textContent = '大房间 · 内部漫游中 · 按 ESC 或点角落邮箱离开';
+  } else {
+    const curShell = SHELLS.find(s => s.id === state.currentShell);
+    document.getElementById('shell-name').textContent = state.currentShell === 'level-fun' ? '⚠ Level Fun (No.47)' : (curShell ? curShell.name : '—');
+    document.getElementById('url-display').textContent = state.currentUrl || '—';
+  }
 
   // v2 新增: 深度档 + 集群
   const tier = depthTierOf(state.count || 0);
