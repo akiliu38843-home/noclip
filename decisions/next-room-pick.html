@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>NOCLIP · 下一个大房间挑选</title>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --panel: #14141c;
+    --line: #2a2a3e;
+    --text: #e8e8f0;
+    --dim: #8a8aa0;
+    --accent: #ff6b9d;
+    --accent-dim: #4a2a3a;
+    --ok: #5dd39e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "PingFang SC", monospace;
+    margin: 0;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 {
+    color: var(--accent);
+    font-size: 22px;
+    margin: 0 0 8px;
+    letter-spacing: 2px;
+  }
+  .sub {
+    color: var(--dim);
+    font-size: 13px;
+    margin-bottom: 24px;
+    line-height: 1.7;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .card:hover {
+    border-color: var(--accent);
+  }
+  .card.selected {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--accent-dim) 100%);
+  }
+  .card.selected::after {
+    content: '✓ 已选';
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--accent);
+    color: #000;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: bold;
+  }
+  .era {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--dim);
+    border: 1px solid var(--line);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .era.web1 { color: #9bd1ff; border-color: #2a4a6e; }
+  .era.web2 { color: #ffb86b; border-color: #6e4a2a; }
+  .era.web3 { color: #c89dff; border-color: #4a2a6e; }
+  .title {
+    font-size: 17px;
+    font-weight: bold;
+    margin: 4px 0 6px;
+  }
+  .vibe {
+    color: var(--dim);
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .row {
+    font-size: 12px;
+    color: var(--text);
+    margin: 4px 0;
+    line-height: 1.6;
+  }
+  .row .key {
+    color: var(--dim);
+    display: inline-block;
+    width: 70px;
+  }
+  .difficulty {
+    color: var(--ok);
+  }
+  .ref {
+    background: #050508;
+    border-left: 2px solid var(--accent);
+    padding: 6px 10px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+  .controls {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, transparent 0%, var(--bg) 30%);
+    padding: 24px 0 8px;
+    margin-top: 32px;
+    text-align: center;
+  }
+  button {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #ff8ab3; }
+  button:disabled { background: var(--line); color: var(--dim); cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+    margin-left: 10px;
+  }
+  #status {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+</style>
+</head>
+<body>
+
+<h1>下一个大房间 · 挑一个先做</h1>
+<p class="sub">
+点卡片选 / 取消选. 选完点最下面的"📋 复制选择给 AI"按钮, 选谁就先做谁.<br>
+每张卡片下面 <span style="color:var(--accent)">★参考★</span> 是真实存在的来源, 不是我编的.<br>
+难度: ★ 简单 (1天) · ★★ 中等 (2-3天) · ★★★ 复杂 (3-5天)
+</p>
+
+<div class="grid" id="grid"></div>
+
+<div class="controls">
+  <button id="copyBtn" disabled>📋 复制选择给 AI</button>
+  <button class="secondary" id="clearBtn">清空选择</button>
+  <div id="status">还没选</div>
+</div>
+
+<script>
+const OPTIONS = [
+  {
+    id: 'geocities-tropics',
+    era: 'web1', eraLabel: 'Web 1 · 1996',
+    title: '🏝️ GeoCities 续集 · TheTropics 热带',
+    vibe: '换个邻里再来一遍. 海岛风, 黄昏渐变背景音乐 (under-the-sea midi), 全是夏威夷度假 fan page + 棕榈树 GIF + 浪潮分割线.',
+    difficulty: '★ 简单',
+    why: '已有 Heartland 框架, 只换 30 个新 URL + 配色调成日落 + 换 BGM',
+    oss: '已有 (复用 Heartland 骨架)',
+    ref: '★参考★ GeoCities TheTropics/Beach (1996-2000) · 已 CDX 验证有快照'
+  },
+  {
+    id: 'geocities-area51',
+    era: 'web1', eraLabel: 'Web 1 · 1997',
+    title: '🛸 GeoCities 续集 · Area51 阴谋论',
+    vibe: '深色 backrooms 主题 GeoCities. UFO 目击者笔记, X档案爱好者, 51区揭密, 全是 1997 阴谋论氛围. 4 个子区已在 Heartland 验过.',
+    difficulty: '★ 简单',
+    why: '复用 Heartland 骨架, 但视觉换暗黑系 + 进门仪式换"密语口令"',
+    oss: '已有 (复用)',
+    ref: '★参考★ GeoCities Area51/Cavern, Shadowlands, Corridor, Dimension'
+  },
+  {
+    id: 'bbs-dialup',
+    era: 'web1', eraLabel: 'Web 1 · 1991',
+    title: '📟 BBS 拨号站 · 国外站点',
+    vibe: '满屏绿字 ANSI art, 14400 baud 拨号音, ENTER 后慢慢一行行打字. 板块: Doors (BBS 小游戏), MSG (留言板), FILES (盗版软件). 进门仪式: 输入 SYSOP 用户名.',
+    difficulty: '★★ 中等',
+    why: '需要真 ANSI 转 HTML, 终端逐字打印, 拨号音合成',
+    oss: 'TuiCss 已用 + asciinema-player + ansi-to-html',
+    ref: '★参考★ textfiles.com (Jason Scott 维护) 存有 1980s-90s 北美 BBS 实录 ANSI 包. 候选: The Works BBS, Sound of Music BBS, ACiD/iCE artpacks'
+  },
+  {
+    id: 'blog2007',
+    era: 'web2', eraLabel: 'Web 2 · 2005-2008',
+    title: '✍️ 2007 博客圈 · RSS 长读',
+    vibe: '白底无衬线字体, RSS 阅读器+博客互链. 进门: 点 RSS 订阅 → 跳到下一个博客. 12 篇真实 Wayback 博客快照: Boing Boing, Daring Fireball, Kottke, A List Apart, Coding Horror, 阮一峰早期, Cool Hunting...',
+    difficulty: '★★ 中等',
+    why: '设计 RSS-reader 风的左侧文章列表 + 右侧正文 iframe. 需筛 12 篇可访问 Wayback',
+    oss: '可参考 wallabag / fraidycat 阅读器 UI',
+    ref: '★参考★ Wayback 2005-08 快照, daringfireball.net + kottke.org 等都有连续快照. RSS 阅读器 UI 参考 NetNewsWire 2007 截图'
+  },
+  {
+    id: 'myspace',
+    era: 'web2', eraLabel: 'Web 2 · 2005',
+    title: '🎵 MySpace 2005 · 国外乐队',
+    vibe: '黑底荧光紫粉, 自定义 CSS 满屏闪图. Top 8 好友栏, 自动播放 BGM (强制!). 12 个国外乐队/网红页: My Chemical Romance, Fall Out Boy, Tila Tequila, Tom Anderson...',
+    difficulty: '★★★ 复杂',
+    why: '需要真 MySpace 自定义 CSS 还原 + 强制 autoplay + Top 8 互动. 进门仪式: "Tom 加你为好友"',
+    oss: 'spacehey.com (MySpace 1:1 复刻) 可参考 CSS · 也存了一些艺人 Wayback',
+    ref: '★参考★ MySpace Music Archive (myspace.com/music 老版 Wayback) + spacehey.com 仿站 CSS. 注意: 用户提醒不要周杰伦类华语, 优先 emo/punk/电音西方乐队'
+  },
+  {
+    id: 'irc',
+    era: 'web1', eraLabel: 'Web 1 · 1995-2005',
+    title: '💬 IRC 频道 · 实时聊天回放',
+    vibe: 'mIRC/HexChat 经典 UI. 进门: 选服务器+频道, 加载该频道某一夜 (2003 #linux on freenode 之类) 的 chatlog, AI 用打字效果回放对话. 你能"看到"15 年前的人在打字.',
+    difficulty: '★★ 中等',
+    why: '需要真 chatlog 语料 (irclogs.ubuntu.com 公开), mIRC 配色复刻, 打字回放定时器',
+    oss: 'KiwiIRC 是开源 web IRC 客户端, 可借界面. mIRC 调色板 GitHub 上 mIRC-color-table',
+    ref: '★参考★ irclogs.ubuntu.com 自 2004 起公开存档 · BBS-style 历史 #linux/#perl 等. 也有 freenode 公开归档 (现 libera.chat)'
+  },
+  {
+    id: 'dao-vote',
+    era: 'web3', eraLabel: 'Web 3 · 2022',
+    title: '🗳️ DAO 投票广场 · 提案幽灵',
+    vibe: 'Snapshot 风 dark UI, 一堆已过期/作废提案. 进门: 连接钱包 (假的). 翻 12 个真实 DAO 死提案 (ConstitutionDAO 没买到宪法 / OlympusDAO 暴雷期提案 / FWB 治理拉扯). 投票按钮已锁死.',
+    difficulty: '★★ 中等',
+    why: '挖 12 个真实 Snapshot 死提案做 iframe. Snapshot 页面较稳, 比博客好嵌',
+    oss: 'snapshot.org/#/ 公开提案页可直接 iframe',
+    ref: '★参考★ Snapshot.org 公开 DAO 投票记录 + Mirror.xyz 治理文章. 必含: ConstitutionDAO, FWB, BanklessDAO, Nouns'
+  }
+];
+
+const grid = document.getElementById('grid');
+const status_ = document.getElementById('status');
+const copyBtn = document.getElementById('copyBtn');
+const clearBtn = document.getElementById('clearBtn');
+const STORE = 'noclip-next-room-pick';
+let selected = new Set(JSON.parse(localStorage.getItem(STORE) || '[]'));
+
+function render() {
+  grid.innerHTML = OPTIONS.map(o => `
+    <div class="card ${selected.has(o.id) ? 'selected' : ''}" data-id="${o.id}">
+      <span class="era ${o.era}">${o.eraLabel}</span>
+      <div class="title">${o.title}</div>
+      <div class="vibe">${o.vibe}</div>
+      <div class="row"><span class="key">难度</span><span class="difficulty">${o.difficulty}</span></div>
+      <div class="row"><span class="key">为啥可行</span>${o.why}</div>
+      <div class="row"><span class="key">OSS</span>${o.oss}</div>
+      <div class="ref">${o.ref}</div>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.card').forEach(c => {
+    c.onclick = () => {
+      const id = c.dataset.id;
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      localStorage.setItem(STORE, JSON.stringify([...selected]));
+      render();
+      update();
+    };
+  });
+  update();
+}
+
+function update() {
+  const n = selected.size;
+  copyBtn.disabled = n === 0;
+  if (n === 0) status_.textContent = '还没选';
+  else if (n === 1) status_.textContent = `已选 1 个: ${OPTIONS.find(o => o.id === [...selected][0]).title}`;
+  else status_.textContent = `已选 ${n} 个 (会按列出顺序排队做)`;
+}
+
+copyBtn.onclick = () => {
+  const picks = [...selected].map(id => OPTIONS.find(o => o.id === id));
+  const txt = `# NOCLIP 下个房间决定
+
+按这个顺序做:
+
+${picks.map((p, i) => `${i+1}. ${p.title}
+   - 时代: ${p.eraLabel}
+   - 难度: ${p.difficulty}
+   - 风格: ${p.vibe}
+   - 参考: ${p.ref}
+`).join('\n')}
+`;
+  navigator.clipboard.writeText(txt).then(() => {
+    status_.textContent = '✅ 已复制到剪贴板, 粘到 Claude 对话窗就行';
+  });
+};
+
+clearBtn.onclick = () => {
+  selected.clear();
+  localStorage.removeItem(STORE);
+  render();
+};
+
+render();
+</script>
+</body>
+</html>

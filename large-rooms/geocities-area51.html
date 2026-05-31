@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>:: AREA 51 :: CLASSIFIED INDEX :: GeoCities</title>
+<style>
+/* ============================================================
+   GeoCities Area51 · 阴谋论 / X档案 / 太空 dark room v0.1
+   配色: 黑底 + 荧光绿 CRT + 警告橙 + 血红 stamp
+   30 URL 全部来自 Wayback CDX prefix 扫 Area51/* 取 >5KB
+   开源参考:
+   - terminal.css (Gioni06) 单色 CRT 设计
+   - despens Geocities One Terabyte (灵感)
+   - X-Files 1993-2002 视觉 (开场字幕的等宽 + 监视器)
+============================================================ */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Courier New', 'MS UI Gothic', monospace;
+  background: #050505;
+  background-image:
+    radial-gradient(ellipse at center, rgba(60,100,40,0.08) 0%, transparent 70%),
+    repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,255,80,0.025) 2px, rgba(0,255,80,0.025) 3px);
+  color: #6affb0;
+  font-size: 13px;
+  min-height: 100vh;
+}
+
+/* CRT 屏幕扫描 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(0,255,100,0.02) 50%, transparent 100%);
+  animation: scan 6s linear infinite;
+  z-index: 998;
+}
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* ============================================================
+   进入仪式 · 密语口令 prompt
+============================================================ */
+#ritual-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #6affb0;
+  font-family: 'Courier New', monospace;
+  text-align: left;
+  padding: 30px;
+}
+#ritual-overlay.hide { display: none; }
+
+.crt-frame {
+  border: 1px solid #2a5a3a;
+  background: rgba(0,30,10,0.4);
+  padding: 24px 28px;
+  max-width: 580px;
+  width: 100%;
+  box-shadow: 0 0 30px rgba(0,255,100,0.15), inset 0 0 60px rgba(0,255,100,0.04);
+  position: relative;
+}
+.crt-frame::before {
+  content: 'TRANSMISSION 0x7F · UTC+00';
+  position: absolute;
+  top: -10px;
+  right: 14px;
+  background: #050505;
+  color: #4a7a5a;
+  font-size: 10px;
+  padding: 0 6px;
+  letter-spacing: 1px;
+}
+.crt-stamp {
+  display: inline-block;
+  border: 2px solid #ff4040;
+  color: #ff4040;
+  font-weight: bold;
+  padding: 3px 10px;
+  font-size: 13px;
+  letter-spacing: 4px;
+  transform: rotate(-3deg);
+  margin-bottom: 14px;
+  text-shadow: 0 0 6px rgba(255,64,64,0.5);
+  font-family: Arial, sans-serif;
+}
+.crt-line {
+  line-height: 1.8;
+  font-size: 13px;
+  margin: 2px 0;
+}
+.crt-line.dim { color: #4a7a5a; font-size: 11px; }
+.crt-prompt {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.crt-prompt::before { content: '>'; color: #ff8c00; }
+#access-code {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed #6affb0;
+  color: #6affb0;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 4px;
+  outline: none;
+  flex: 1;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+#access-code:focus { border-bottom-color: #ff8c00; }
+.crt-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: #6affb0;
+  animation: blink 0.8s steps(2, start) infinite;
+  vertical-align: text-bottom;
+}
+@keyframes blink { to { opacity: 0; } }
+.crt-hint {
+  color: #4a7a5a;
+  font-size: 11px;
+  font-style: italic;
+  margin-top: 10px;
+  opacity: 0;
+  animation: fadein 0.8s linear forwards;
+  animation-delay: 4s;
+}
+@keyframes fadein { to { opacity: 1; } }
+.crt-button {
+  background: #1a3a2a;
+  border: 1px solid #6affb0;
+  color: #6affb0;
+  padding: 6px 18px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  margin-top: 12px;
+}
+.crt-button:hover { background: #6affb0; color: #000; }
+#response-log {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #ff8c00;
+  min-height: 18px;
+}
+
+/* ============================================================
+   主页面 (仪式后)
+============================================================ */
+.page-wrapper { display: none; }
+.page-wrapper.show { display: block; }
+
+.top-banner {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+  color: #6affb0;
+  text-align: center;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #2a5a3a;
+  position: relative;
+}
+.top-banner h1 {
+  font-size: 24px;
+  margin: 0 0 4px;
+  letter-spacing: 6px;
+  text-shadow: 0 0 8px rgba(106,255,176,0.4);
+  font-family: 'Courier New', monospace;
+}
+.top-banner h1 .blink-text { animation: blink 1.1s steps(2, start) infinite; color: #ff4040; }
+.top-banner .subtitle {
+  font-size: 11px;
+  color: #4a7a5a;
+  letter-spacing: 2px;
+  font-style: italic;
+}
+.corner-icon {
+  position: absolute;
+  font-size: 24px;
+  line-height: 1;
+  opacity: 0.5;
+}
+.corner-icon.tl { top: 10px; left: 14px; animation: spin 6s linear infinite; }
+.corner-icon.tr { top: 10px; right: 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.marquee-bar {
+  background: #1a0a0a;
+  color: #ff8c00;
+  padding: 5px 0;
+  overflow: hidden;
+  font-size: 12px;
+  border-bottom: 1px solid #4a2a2a;
+  letter-spacing: 1px;
+}
+.marquee-bar > span {
+  display: inline-block;
+  animation: marquee 24s linear infinite;
+  white-space: nowrap;
+  padding-left: 100%;
+  font-family: 'Courier New', monospace;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+.webring {
+  background: rgba(20,40,30,0.4);
+  border: 1px solid #2a5a3a;
+  padding: 7px 14px;
+  margin: 12px auto;
+  max-width: 760px;
+  text-align: center;
+  font-size: 12px;
+  color: #4a7a5a;
+}
+.webring a {
+  color: #6affb0;
+  text-decoration: underline;
+  margin: 0 12px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.webring a:hover { color: #ff8c00; }
+.webring .ringid { color: #4a7a5a; font-size: 11px; }
+
+.main-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 14px;
+  max-width: 1100px;
+  margin: 14px auto;
+  padding: 0 14px;
+}
+
+.house-grid {
+  background: rgba(10,20,15,0.6);
+  border: 1px solid #2a5a3a;
+  padding: 10px;
+}
+.grid-header {
+  background: #1a0a0a;
+  color: #ff4040;
+  padding: 6px 10px;
+  font-size: 12px;
+  margin: -10px -10px 10px;
+  text-align: center;
+  letter-spacing: 3px;
+  border-bottom: 1px solid #4a2a2a;
+  font-weight: bold;
+}
+.houses {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.house {
+  background: #0a1410;
+  border: 1px solid #2a5a3a;
+  padding: 7px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 10px;
+  color: #6affb0;
+  transition: all 0.15s;
+  position: relative;
+}
+.house:hover {
+  background: #1a3020;
+  border-color: #6affb0;
+  box-shadow: 0 0 6px rgba(106,255,176,0.3);
+}
+.house.visited {
+  background: #1a1a0a;
+  border-color: #ff8c00;
+  color: #ff8c00;
+}
+.house.visited::after {
+  content: '✓';
+  position: absolute;
+  top: 2px; right: 4px;
+  color: #ff8c00;
+  font-size: 11px;
+  font-weight: bold;
+}
+.house .house-icon {
+  font-size: 20px;
+  line-height: 1;
+  display: block;
+  margin-bottom: 3px;
+}
+.house .house-id {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: #4a7a5a;
+  letter-spacing: 1px;
+}
+.house.visited .house-id { color: #b86a00; }
+.house .house-date {
+  font-size: 8px;
+  color: #2a5a3a;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.house-view {
+  background: #050505;
+  border: 1px solid #2a5a3a;
+  min-height: 500px;
+}
+.view-header {
+  background: #1a0a0a;
+  color: #ff4040;
+  padding: 6px 10px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #4a2a2a;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+.view-header .ctrl {
+  background: transparent;
+  border: 1px solid #ff4040;
+  color: #ff4040;
+  padding: 1px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+}
+.view-header .ctrl:hover { background: #ff4040; color: #000; }
+.view-iframe {
+  width: 100%;
+  height: 520px;
+  border: 0;
+  background: #fff;
+}
+.view-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 520px;
+  color: #4a7a5a;
+  font-style: italic;
+  font-size: 13px;
+  text-align: center;
+  padding: 30px;
+}
+.view-placeholder .big-arrow {
+  font-size: 56px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+  color: #6affb0;
+}
+
+.footer {
+  background: rgba(10,10,10,0.8);
+  border-top: 1px solid #2a5a3a;
+  padding: 16px;
+  text-align: center;
+  font-size: 11px;
+  color: #4a7a5a;
+  margin-top: 30px;
+  letter-spacing: 1px;
+}
+.footer .counter {
+  background: #000;
+  color: #6affb0;
+  font-family: 'Courier New', monospace;
+  padding: 4px 12px;
+  display: inline-block;
+  letter-spacing: 4px;
+  border: 1px solid #2a5a3a;
+  margin: 6px 0;
+  box-shadow: inset 0 0 8px rgba(106,255,176,0.2);
+}
+.footer .stamp {
+  color: #ff4040;
+  font-style: normal;
+  font-weight: bold;
+  letter-spacing: 3px;
+}
+.footer .guestbook {
+  color: #6affb0;
+  text-decoration: underline;
+  cursor: pointer;
+  margin: 0 8px;
+}
+.footer .since {
+  margin-top: 8px;
+  display: block;
+  color: #4a7a5a;
+}
+
+.exit-mailbox {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  font-size: 30px;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.3s;
+  z-index: 100;
+  background: #0a0a0a;
+  padding: 4px 8px;
+  border: 1px solid #2a5a3a;
+}
+.exit-mailbox:hover {
+  opacity: 1;
+  transform: scale(1.2);
+  border-color: #ff4040;
+}
+.exit-mailbox::after {
+  content: 'TRANSMIT';
+  display: block;
+  font-size: 8px;
+  font-family: 'Courier New', monospace;
+  color: #6affb0;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.best-viewed {
+  text-align: center;
+  font-size: 11px;
+  color: #4a7a5a;
+  margin: 12px;
+  font-style: italic;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 720px) {
+  .main-layout { grid-template-columns: 1fr; }
+  .houses { grid-template-columns: repeat(2, 1fr); }
+  .top-banner h1 { font-size: 16px; letter-spacing: 3px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     进入仪式 · 密语口令
+============================================================ -->
+<div id="ritual-overlay">
+  <div class="crt-frame">
+    <div class="crt-stamp">CLASSIFIED</div>
+    <div class="crt-line">.. ::  AREA 51 :: SECURITY CHECKPOINT  :: ..</div>
+    <div class="crt-line">.. terminal node 17 / wing C / sublevel 4 ..</div>
+    <div class="crt-line dim">established 1996 · last login: ████ (data redacted)</div>
+    <div class="crt-line" style="margin-top:14px;">unauthorized access will be observed.</div>
+    <div class="crt-line">enter access code to proceed:</div>
+    <div class="crt-prompt">
+      <input id="access-code" type="text" maxlength="20" autofocus autocomplete="off" spellcheck="false" placeholder="________">
+    </div>
+    <div class="crt-hint">// hint: type anything 4+ chars · try ROSWELL · MAJESTIC12 · MULDER</div>
+    <button class="crt-button" id="submit-code">[ TRANSMIT ]</button>
+    <div id="response-log"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     主页 (验证后显示)
+============================================================ -->
+<div class="page-wrapper" id="page">
+
+<div class="top-banner">
+  <div class="corner-icon tl">🛸</div>
+  <div class="corner-icon tr">📡</div>
+  <h1>:: AREA 51 :: <span class="blink-text">CLASSIFIED</span> INDEX</h1>
+  <div class="subtitle">— GeoCities · "The truth is out there" · 30 unsealed dossiers —</div>
+</div>
+
+<div class="marquee-bar">
+  <span>★ INTERCEPTED 1996-2001 · MAJESTIC-12 NEVER EXISTED · X-FILES SEASON 2 EPISODE 3 · ROSWELL WAS A WEATHER BALLOON · DO NOT MENTION HANGAR 18 · TRUST NO ONE · I WANT TO BELIEVE ★</span>
+</div>
+
+<div class="webring">
+  <span class="ringid">[ring 0xFA17 · 51 nodes]</span>
+  <a onclick="ringNav('prev')">◄ PREV</a>
+  <a onclick="ringNav('random')">★ RANDOM DOSSIER ★</a>
+  <a onclick="ringNav('next')">NEXT ►</a>
+  <a onclick="ringNav('list')">[ INDEX ]</a>
+</div>
+
+<div class="main-layout">
+
+  <!-- 左侧: 30 个 dossier -->
+  <div class="house-grid">
+    <div class="grid-header">▼ 30 DOSSIERS ▼</div>
+    <div class="houses" id="houses"></div>
+  </div>
+
+  <!-- 右侧: iframe -->
+  <div class="house-view">
+    <div class="view-header">
+      <span id="view-title">▸ NO DOSSIER LOADED · select from index ◂</span>
+      <button class="ctrl" onclick="closeView()">×</button>
+    </div>
+    <div id="view-content">
+      <div class="view-placeholder">
+        <div class="big-arrow">←</div>
+        <div>Select a dossier on the left to declassify.</div>
+        <div style="margin-top:10px;font-size:11px;color:#4a7a5a;">Most operators went silent before 2002.<br>Some pages may load with static or refuse to render.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="best-viewed">
+  ⚠ Best viewed with Netscape Navigator 3.0 · 800x600 · monochrome CRT ⚠
+</div>
+
+<div class="footer">
+  <div>OBSERVERS THIS NIGHT: <span class="counter" id="counter">0000000</span></div>
+  <div style="margin-top:6px;">
+    <a class="guestbook" onclick="alert('// guestbook auto-purged 1999-12-31 (Y2K compliance)')">📓 view watcher log</a>
+    <a class="guestbook" onclick="alert('// CHANNEL CLOSED · last operator: c.carter@1013.foxnet (404)')">📡 contact sysop</a>
+  </div>
+  <span class="since"><span class="stamp">// 13:13 :: SIGNAL DEGRADED</span> · est. 1997-09-12 · MIB-archive node</span>
+</div>
+
+<!-- 隐藏出口 -->
+<div class="exit-mailbox" onclick="exitToBackrooms()" title="transmit signal to leave">📡</div>
+
+</div>
+
+<script>
+// ============================================================
+// Area51 30 dossiers · v0.2 主题筛重选 (2026-05-31)
+// 上一版 v0.1 误把 Sandman / Star Trek 同人当主题, 用户指出后重做.
+// 这次按 URL 关键词 + 已知 X-Files / UFO 圈 userid 二次筛, 全部命中:
+//   · X-Files 同人 (1473/adi/Brazilian fan ring, 1019 episode transcripts)
+//   · UFO 学术 / 目击 (1349 Hynek 圈, 1358 sighting logs, 1306)
+//   · MIB / Wyck 玄学阴谋 (1317)
+//   · X-Files 链接圈 (1087, 1121, 1499)
+// ============================================================
+const HOUSES = [
+  // X-Files 第 2 季 transcripts + Roswell papers (op 1019 / 1087 / 1121 / 1499)
+  { id: 'tx_2x03',      neighborhood: 'Area51/1019',     topic: 'X-Files 2x03 transcript',     url: 'https://web.archive.org/web/19990219175242if_/http://www.geocities.com:80/Area51/1019/x2x3.html',           icon: '📼', updated: '1999-02-19' },
+  { id: 'tx_2x04',      neighborhood: 'Area51/1019',     topic: 'X-Files 2x04 transcript',     url: 'https://web.archive.org/web/19990220022302if_/http://www.geocities.com:80/Area51/1019/x2x4.html',           icon: '📼', updated: '1999-02-20' },
+  { id: 'tx_2x02',      neighborhood: 'Area51/1019',     topic: 'X-Files 2x02 transcript',     url: 'https://web.archive.org/web/19990219094459if_/http://www.geocities.com:80/Area51/1019/x2x2.html',           icon: '📼', updated: '1999-02-19' },
+  { id: 'tx_pnet_8197', neighborhood: 'Area51/1019',     topic: 'X-Files P-Net transcript',    url: 'https://web.archive.org/web/19990222082454if_/http://www.geocities.com:80/Area51/1019/txpn081297.html',      icon: '🎙️', updated: '1999-02-22' },
+  { id: 'paper_roswell',neighborhood: 'Area51/1019',     topic: 'Roswell paper · part 2',      url: 'https://web.archive.org/web/20010501212653if_/http://www.geocities.com:80/Area51/1019/paper2_2.html',       icon: '📄', updated: '2001-05-01' },
+  { id: 'xlinks_hub',   neighborhood: 'Area51/1087',     topic: 'X-Files links directory',     url: 'https://web.archive.org/web/19990209054933if_/http://www.geocities.com:80/Area51/1087/xlinks.html',         icon: '🔗', updated: '1999-02-09' },
+  { id: 'summermoon',   neighborhood: 'Area51/1121',     topic: 'X-Files Summer Moon ep',      url: 'https://web.archive.org/web/19990202153300if_/http://www.geocities.com:80/Area51/1121/x-summermoon.html',   icon: '🌙', updated: '1999-02-02' },
+  { id: 'xfiles_main',  neighborhood: 'Area51/1499',     topic: 'X-Files fan homepage',        url: 'https://web.archive.org/web/20091019191841if_/http://geocities.com/Area51/1499/xfiles.html',                 icon: '📁', updated: '2009-10-19' },
+
+  // ADI 巴西 X-Files 同人 ring (op 1473)
+  { id: 'adi_linnell_1',  neighborhood: 'Area51/1473/adi', topic: 'Linnell saga ep 1',         url: 'https://web.archive.org/web/20090829204247if_/http://geocities.com/Area51/1473/adi/linnell1.htm',           icon: '✒️', updated: '2009-08-29' },
+  { id: 'adi_linnell_2',  neighborhood: 'Area51/1473/adi', topic: 'Linnell saga ep 2',         url: 'https://web.archive.org/web/20090831000912if_/http://geocities.com/Area51/1473/adi/linnell2.htm',           icon: '✒️', updated: '2009-08-31' },
+  { id: 'adi_dreamer_7',  neighborhood: 'Area51/1473/adi', topic: 'Dreamer saga ep 7',         url: 'https://web.archive.org/web/20091022131958if_/http://geocities.com/Area51/1473/adi/dreamer7.htm',           icon: '💭', updated: '2009-10-22' },
+  { id: 'adi_dreamer_17', neighborhood: 'Area51/1473/adi', topic: 'Dreamer saga ep 17',        url: 'https://web.archive.org/web/20090829204244if_/http://geocities.com/Area51/1473/adi/dreamer17.htm',          icon: '💭', updated: '2009-08-29' },
+  { id: 'adi_politi',     neighborhood: 'Area51/1473/adi', topic: 'Politi (ADI essays)',       url: 'https://web.archive.org/web/20090829204248if_/http://geocities.com/Area51/1473/adi/politi.htm',            icon: '📜', updated: '2009-08-29' },
+
+  // Wyck / MIB / 玄学阴谋 (op 1317)
+  { id: 'wyck_word',  neighborhood: 'Area51/1317',     topic: 'Wyck · Word of Dead',           url: 'https://web.archive.org/web/20090729194918if_/http://geocities.com/Area51/1317/WyckWoD.html',                icon: '🔮', updated: '2009-07-29' },
+  { id: 'mib_files',  neighborhood: 'Area51/1317',     topic: 'Men In Black dossier',          url: 'https://web.archive.org/web/20090729194925if_/http://geocities.com/Area51/1317/mibs.html',                   icon: '🕴️', updated: '2009-07-29' },
+  { id: 'wyck_void',  neighborhood: 'Area51/1317',     topic: 'The Void (Wyck cosmology)',     url: 'https://web.archive.org/web/20090729194926if_/http://geocities.com/Area51/1317/void.html',                   icon: '⚫', updated: '2009-07-29' },
+  { id: 'wyck_lib',   neighborhood: 'Area51/1317',     topic: 'Forbidden Library',             url: 'https://web.archive.org/web/20090729194925if_/http://geocities.com/Area51/1317/lib.html',                    icon: '📚', updated: '2009-07-29' },
+
+  // Hynek / UFO 学术 (op 1349 · 葡萄牙语 UFO 研究小组)
+  { id: 'hynek_wilson', neighborhood: 'Area51/1349',   topic: 'Wilson UFO testimony',          url: 'https://web.archive.org/web/20010429031557if_/http://www.geocities.com:80/Area51/1349/wilson.html',          icon: '👁️', updated: '2001-04-29' },
+  { id: 'hynek_un',     neighborhood: 'Area51/1349',   topic: 'Hynek classification system',   url: 'https://web.archive.org/web/20000308190128if_/http://www.geocities.com:80/Area51/1349/hynekun.html',         icon: '🛸', updated: '2000-03-08' },
+  { id: 'hynek_leiet',  neighborhood: 'Area51/1349',   topic: 'Brazilian UFO law project',     url: 'https://web.archive.org/web/20000620115811if_/http://www.geocities.com:80/Area51/1349/leiet.html',          icon: '⚖️', updated: '2000-06-20' },
+  { id: 'hynek_forma',  neighborhood: 'Area51/1349',   topic: 'Forma Visível (witness form)',  url: 'https://web.archive.org/web/20010428230747if_/http://www.geocities.com:80/Area51/1349/formavis.html',       icon: '🛰️', updated: '2001-04-28' },
+
+  // UFO 目击日志 (op 1358 · 编号 log1-13)
+  { id: 'sighting_01',  neighborhood: 'Area51/1358',   topic: 'Sighting log #1',               url: 'https://web.archive.org/web/20090829170947if_/http://geocities.com/Area51/1358/log1.html',                   icon: '📓', updated: '2009-08-29' },
+  { id: 'sighting_08',  neighborhood: 'Area51/1358',   topic: 'Sighting log #8',               url: 'https://web.archive.org/web/20090829180210if_/http://geocities.com/Area51/1358/log8.html',                   icon: '📓', updated: '2009-08-29' },
+  { id: 'sighting_11',  neighborhood: 'Area51/1358',   topic: 'Sighting log #11',              url: 'https://web.archive.org/web/20091022185441if_/http://geocities.com/Area51/1358/log11.html',                  icon: '📓', updated: '2009-10-22' },
+  { id: 'sighting_13',  neighborhood: 'Area51/1358',   topic: 'Sighting log #13',              url: 'https://web.archive.org/web/20090830005057if_/http://geocities.com/Area51/1358/log13.html',                  icon: '📓', updated: '2009-08-30' },
+
+  // UFO 杂集 (op 1306)
+  { id: 'ufo_index',  neighborhood: 'Area51/1306',     topic: 'UFO fan index',                 url: 'https://web.archive.org/web/20000609032320if_/http://www.geocities.com:80/Area51/1306/ufo.html',              icon: '🛸', updated: '2000-06-09' },
+  { id: 'ufo_art',    neighborhood: 'Area51/1306',     topic: 'UFO illustrations',             url: 'https://web.archive.org/web/20010831065300if_/http://www.geocities.com:80/Area51/1306/art.html',              icon: '🎨', updated: '2001-08-31' },
+  { id: 'ufo_jokes',  neighborhood: 'Area51/1306',     topic: 'UFO jokes collection',          url: 'https://web.archive.org/web/19990117015326if_/http://www.geocities.com:80/Area51/1306/jokes.html',            icon: '😜', updated: '1999-01-17' },
+
+  // 补 3 个 ADI 系列凑 30
+  { id: 'adi_dreamer_18',neighborhood:'Area51/1473/adi', topic: 'Dreamer saga ep 18',          url: 'https://web.archive.org/web/20090830100451if_/http://geocities.com/Area51/1473/adi/dreamer18.htm',          icon: '💭', updated: '2009-08-30' },
+  { id: 'adi_linnell_9', neighborhood:'Area51/1473/adi', topic: 'Linnell saga ep 9',           url: 'https://web.archive.org/web/20090831000912if_/http://geocities.com/Area51/1473/adi/linnell9.htm',           icon: '✒️', updated: '2009-08-31' },
+  { id: 'adi_dreamer_38',neighborhood:'Area51/1473/adi', topic: 'Dreamer saga ep 38',          url: 'https://web.archive.org/web/20090829180130if_/http://geocities.com/Area51/1473/adi/dreamer38.htm',          icon: '💭', updated: '2009-08-29' },
+];
+
+const STORE = 'geocities-area51-v1';
+let currentHouse = null;
+const visited = new Set(JSON.parse(localStorage.getItem(STORE + '-visited') || '[]'));
+let visitorCount = parseInt(localStorage.getItem(STORE + '-counter') || '13');
+
+function saveVisited() {
+  localStorage.setItem(STORE + '-visited', JSON.stringify([...visited]));
+  localStorage.setItem(STORE + '-counter', visitorCount.toString());
+}
+
+function renderHouses() {
+  const grid = document.getElementById('houses');
+  grid.innerHTML = HOUSES.map((h, i) => `
+    <div class="house ${visited.has(h.id) ? 'visited' : ''}" data-idx="${i}" onclick="openHouse(${i})" title="${h.topic}">
+      <div class="house-icon">${h.icon}</div>
+      <div class="house-id">${h.id}</div>
+      <div class="house-date">${h.updated}</div>
+    </div>
+  `).join('');
+}
+
+function openHouse(idx) {
+  const h = HOUSES[idx];
+  currentHouse = h;
+  visited.add(h.id);
+  saveVisited();
+  document.getElementById('view-title').textContent = `▸ ${h.id} :: ${h.topic}`;
+  document.getElementById('view-content').innerHTML = `
+    <iframe class="view-iframe"
+            src="${h.url}"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            onload="console.log('loaded ${h.id}')">
+    </iframe>
+  `;
+  renderHouses();
+}
+
+function closeView() {
+  currentHouse = null;
+  document.getElementById('view-title').textContent = '▸ NO DOSSIER LOADED · select from index ◂';
+  document.getElementById('view-content').innerHTML = `
+    <div class="view-placeholder">
+      <div class="big-arrow">←</div>
+      <div>Select a dossier on the left to declassify.</div>
+      <div style="margin-top:10px;font-size:11px;color:#4a7a5a;">Most operators went silent before 2002.<br>Some pages may load with static or refuse to render.</div>
+    </div>
+  `;
+}
+
+function ringNav(dir) {
+  if (dir === 'random' || !currentHouse) {
+    const idx = Math.floor(Math.random() * HOUSES.length);
+    openHouse(idx);
+    return;
+  }
+  const curIdx = HOUSES.findIndex(h => h.id === currentHouse.id);
+  if (dir === 'prev') openHouse((curIdx - 1 + HOUSES.length) % HOUSES.length);
+  else if (dir === 'next') openHouse((curIdx + 1) % HOUSES.length);
+  else if (dir === 'list') {
+    closeView();
+    document.querySelector('.house-grid').scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function exitToBackrooms() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'geocities-area51' }, '*');
+  } else {
+    if (confirm('// abort transmission · close terminal?')) {
+      window.close();
+    }
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('ritual-overlay').classList.contains('hide')) {
+    exitToBackrooms();
+  }
+});
+
+function updateCounter() {
+  visitorCount++;
+  saveVisited();
+  document.getElementById('counter').textContent = String(visitorCount).padStart(7, '0');
+}
+
+// ============================================================
+// 入门密语口令 · 输任意 4+ chars 都通过 · 易彩蛋:
+// ROSWELL / MAJESTIC12 / MULDER / SCULLY / TRUTH → 特殊回复
+// ============================================================
+const CODE_RESPONSES = {
+  'ROSWELL':    '✓ GREY FILES UNLOCKED · clearance λ',
+  'MAJESTIC':   '✓ MJ-12 RECOGNIZED · operator level 6',
+  'MAJESTIC12': '✓ MJ-12 RECOGNIZED · operator level 6',
+  'MULDER':     '✓ AGENT MULDER · I WANT TO BELIEVE',
+  'SCULLY':     '✓ AGENT SCULLY · skepticism noted',
+  'TRUTH':      '✓ THE TRUTH IS OUT THERE',
+  'HANGAR18':   '✓ HANGAR 18 :: DO NOT MENTION',
+  'BLUEBOOK':   '✓ PROJECT BLUE BOOK · 12618 cases',
+  'TRUSTNOONE': '✓ TRUST NO ONE · clearance revoked → granted',
+  'IWANTTOBELIEVE': '✓ FOX MULDER · poster decoded',
+};
+
+function tryCode() {
+  const input = document.getElementById('access-code');
+  const raw = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const log = document.getElementById('response-log');
+  if (raw.length < 4) {
+    log.style.color = '#ff4040';
+    log.textContent = '✗ code too short · 4+ characters required';
+    return;
+  }
+  const specialMsg = CODE_RESPONSES[raw];
+  if (specialMsg) {
+    log.style.color = '#6affb0';
+    log.textContent = specialMsg;
+  } else {
+    log.style.color = '#ff8c00';
+    log.textContent = `✓ TEMPORARY CLEARANCE · code "${raw}" logged · 24h pass`;
+  }
+  // 静电 + dialup 0.8s 进场
+  playInterceptSound();
+  setTimeout(() => {
+    document.getElementById('ritual-overlay').classList.add('hide');
+    document.getElementById('page').classList.add('show');
+    updateCounter();
+  }, 1400);
+}
+
+function playInterceptSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    // 三声短 beep + 静电
+    [880, 1100, 660].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.04, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.12);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.12);
+    });
+    // 静电 0.8s
+    const noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.8, ctx.sampleRate);
+    const ch = noiseBuf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * 0.1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    const ngain = ctx.createGain();
+    ngain.gain.setValueAtTime(0.025, now + 0.5);
+    ngain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+    noise.connect(ngain); ngain.connect(ctx.destination);
+    noise.start(now + 0.5);
+    noise.stop(now + 1.3);
+  } catch (e) {}
+}
+
+function init() {
+  renderHouses();
+  document.getElementById('counter').textContent = String(visitorCount).padStart(7, '0');
+
+  // 仪式 button + Enter
+  document.getElementById('submit-code').onclick = tryCode;
+  document.getElementById('access-code').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') tryCode();
+  });
+}
+
+init();
+</script>
+
+</body>
+</html>
