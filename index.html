@@ -435,7 +435,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 11px; margin-top
     <div class="loading-text" id="loading-text">noclip...</div>
     <div class="loading-meta" id="loading-meta">—</div>
     <div class="loading-progress" id="loading-progress">第 0 秒</div>
-    <button id="loading-retry" onclick="requestDoor()">这扇门好像没开 · 换一扇 → (或按 ESC)</button>
+    <button id="loading-retry" onclick="forceRetry()">这扇门好像没开 · 换一扇 → (或按 ESC)</button>
   </div>
 </div>
 
@@ -808,7 +808,7 @@ async function isUrlReachable(url) {
   if (failedUrls.has(url)) return false;
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 4000);
+    const tid = setTimeout(() => ctrl.abort(), 2500);
     await fetch(url, { mode: 'no-cors', signal: ctrl.signal, redirect: 'follow' });
     clearTimeout(tid);
     return true;
@@ -935,19 +935,31 @@ function showLoading(shellName, url) {
   loadingTickTimer = setInterval(() => {
     const sec = Math.floor((Date.now() - loadingStartTime) / 1000);
     const prog = document.getElementById('loading-progress');
-    if (prog) prog.textContent = '第 ' + sec + ' 秒' + (sec > 6 ? ' (慢站, 再等等)' : '');
+    if (prog) prog.textContent = '第 ' + sec + ' 秒' + (sec > 4 ? ' (慢站, 即将换一扇)' : '');
   }, 250);
-  // 6s 后出现"换一扇"按钮 (更早提示 · 配合 ESC 全局兜底)
+  // 3s 后出现"换一扇"按钮 (更早 · 配合 ESC 全局兜底)
   if (loadingRetryTimer) clearTimeout(loadingRetryTimer);
   loadingRetryTimer = setTimeout(() => {
     document.getElementById('loading-retry').classList.add('show');
-  }, 6000);
+  }, 3000);
 }
 
 function hideLoading() {
   document.getElementById('loading-overlay').classList.remove('active');
   if (loadingTickTimer) { clearInterval(loadingTickTimer); loadingTickTimer = null; }
   if (loadingRetryTimer) { clearTimeout(loadingRetryTimer); loadingRetryTimer = null; }
+  if (window._autoSkipTimer) { clearTimeout(window._autoSkipTimer); window._autoSkipTimer = null; }
+}
+
+// 强制重试 · 突破 inTransition lock + 拉黑当前 URL
+function forceRetry() {
+  inTransition = false;
+  hideLoading();
+  const state = getState();
+  if (state.currentUrl) failedUrls.add(state.currentUrl);
+  document.getElementById('transition-overlay').classList.remove('active');
+  document.getElementById('corridor-overlay').classList.remove('active');
+  requestDoor();
 }
 
 function attachIframeLoad() {
@@ -955,14 +967,20 @@ function attachIframeLoad() {
   requestAnimationFrame(() => {
     const frame = document.getElementById('stage-frame');
     if (!frame) return;
-    // outer iframe (shell HTML) load 后再延 600ms 给 inner iframe 一点缓冲
-    frame.addEventListener('load', () => setTimeout(hideLoading, 600), { once: true });
-    // 兜底: 20s 还没 load 就强制隐藏
-    setTimeout(() => {
-      if (document.getElementById('loading-overlay').classList.contains('active')) {
-        hideLoading();
-      }
-    }, 20000);
+    // outer iframe (shell HTML) load 后立刻 hide (不再 600ms 缓冲 - 太慢)
+    frame.addEventListener('load', () => setTimeout(hideLoading, 200), { once: true });
+    // 兜底 6s · 还没 load 就把当前 URL 拉黑 + 自动换一扇
+    if (window._autoSkipTimer) clearTimeout(window._autoSkipTimer);
+    window._autoSkipTimer = setTimeout(() => {
+      const ov = document.getElementById('loading-overlay');
+      if (!ov.classList.contains('active')) return;
+      const state = getState();
+      if (state.currentUrl) failedUrls.add(state.currentUrl);
+      hideLoading();
+      inTransition = false;  // 强制清 transition flag
+      console.log('[auto-skip] 6s 还没 load, 拉黑', state.currentUrl);
+      requestDoor();
+    }, 6000);
   });
 }
 
@@ -1091,10 +1109,17 @@ window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'nextDoor') requestDoor();
 });
 
-// 全局 ESC 兜底 (iframe 里的 ESC 走 postMessage, 这里是 outer 范围的 ESC)
+// 全局 ESC 兜底 · 强制突破任何 inTransition / loading 阻塞
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     e.preventDefault();
+    // 强制清所有 lock + hide 所有 overlay
+    inTransition = false;
+    hideLoading();
+    const state = getState();
+    if (state.currentUrl) failedUrls.add(state.currentUrl);
+    document.getElementById('transition-overlay').classList.remove('active');
+    document.getElementById('corridor-overlay').classList.remove('active');
     requestDoor();
   }
 });
