@@ -456,52 +456,52 @@ body {
 // 之前的 4-digit ID 子页大多没存档, 全部替换为邻里/子区索引页
 const HOUSES = [
   // Heartland (4)
-  { id: 'plainsfolk93', neighborhood: 'Heartland/Plains',     url: 'http://web.archive.org/web/20000826230118if_/http://geocities.com:80/Heartland/Plains/',           icon: '🏡', updated: '2000-08-26' },
-  { id: 'meadow_dweller',neighborhood:'Heartland/Meadows',    url: 'http://web.archive.org/web/19991006180645if_/http://www.geocities.com:80/Heartland/Meadows/',     icon: '🐴', updated: '1999-10-06' },
-  { id: 'valley_walker',neighborhood: 'Heartland/Valley',     url: 'http://web.archive.org/web/20000914025016if_/http://www.geocities.com:80/Heartland/Valley/',      icon: '🌾', updated: '2000-09-14' },
-  { id: 'cornhusker',   neighborhood: 'Heartland/Park',       url: 'http://web.archive.org/web/19991009050909if_/http://www.geocities.com:80/Heartland/Park/',        icon: '🌽', updated: '1999-10-09' },
+  { id: 'plainsfolk93', neighborhood: 'Heartland/Plains',     url: 'https://web.archive.org/web/20000826230118if_/http://geocities.com:80/Heartland/Plains/',           icon: '🏡', updated: '2000-08-26' },
+  { id: 'meadow_dweller',neighborhood:'Heartland/Meadows',    url: 'https://web.archive.org/web/19991006180645if_/http://www.geocities.com:80/Heartland/Meadows/',     icon: '🐴', updated: '1999-10-06' },
+  { id: 'valley_walker',neighborhood: 'Heartland/Valley',     url: 'https://web.archive.org/web/20000914025016if_/http://www.geocities.com:80/Heartland/Valley/',      icon: '🌾', updated: '2000-09-14' },
+  { id: 'cornhusker',   neighborhood: 'Heartland/Park',       url: 'https://web.archive.org/web/19991009050909if_/http://www.geocities.com:80/Heartland/Park/',        icon: '🌽', updated: '1999-10-09' },
 
   // Hollywood (3)
-  { id: 'movie_buff_x', neighborhood: 'Hollywood/Hills',      url: 'http://web.archive.org/web/20000929053513if_/http://www.geocities.com:80/Hollywood/Hills/',       icon: '🎬', updated: '2000-09-29' },
-  { id: 'star_chaser',  neighborhood: 'Hollywood/Boulevard',  url: 'http://web.archive.org/web/19990223215053if_/http://www.geocities.com:80/Hollywood/Boulevard/',   icon: '⭐', updated: '1999-02-23' },
-  { id: 'oscar_lover',  neighborhood: 'Hollywood/Studio',     url: 'http://web.archive.org/web/19991008020711if_/http://www.geocities.com:80/Hollywood/Studio/',      icon: '🏆', updated: '1999-10-08' },
+  { id: 'movie_buff_x', neighborhood: 'Hollywood/Hills',      url: 'https://web.archive.org/web/20000929053513if_/http://www.geocities.com:80/Hollywood/Hills/',       icon: '🎬', updated: '2000-09-29' },
+  { id: 'star_chaser',  neighborhood: 'Hollywood/Boulevard',  url: 'https://web.archive.org/web/19990223215053if_/http://www.geocities.com:80/Hollywood/Boulevard/',   icon: '⭐', updated: '1999-02-23' },
+  { id: 'oscar_lover',  neighborhood: 'Hollywood/Studio',     url: 'https://web.archive.org/web/19991008020711if_/http://www.geocities.com:80/Hollywood/Studio/',      icon: '🏆', updated: '1999-10-08' },
 
   // Athens (3)
-  { id: 'plato_fan',    neighborhood: 'Athens',               url: 'http://web.archive.org/web/20001017124759if_/http://www.geocities.com:80/Athens/',                icon: '📚', updated: '2000-10-17' },
-  { id: 'philosopher',  neighborhood: 'Athens/Academy',       url: 'http://web.archive.org/web/19991011151054if_/http://www.geocities.com:80/Athens/Academy/',        icon: '🏛️', updated: '1999-10-11' },
-  { id: 'wisdom_seeker',neighborhood: 'Athens/Acropolis',     url: 'http://web.archive.org/web/19991002065741if_/http://www.geocities.com:80/Athens/Acropolis/',      icon: '🦉', updated: '1999-10-02' },
+  { id: 'plato_fan',    neighborhood: 'Athens',               url: 'https://web.archive.org/web/20001017124759if_/http://www.geocities.com:80/Athens/',                icon: '📚', updated: '2000-10-17' },
+  { id: 'philosopher',  neighborhood: 'Athens/Academy',       url: 'https://web.archive.org/web/19991011151054if_/http://www.geocities.com:80/Athens/Academy/',        icon: '🏛️', updated: '1999-10-11' },
+  { id: 'wisdom_seeker',neighborhood: 'Athens/Acropolis',     url: 'https://web.archive.org/web/19991002065741if_/http://www.geocities.com:80/Athens/Acropolis/',      icon: '🦉', updated: '1999-10-02' },
 
   // Area51 (4)
-  { id: 'truth_hunter', neighborhood: 'Area51/Capsule',       url: 'http://web.archive.org/web/19991002035510if_/http://www.geocities.com:80/Area51/Capsule/',        icon: '🛸', updated: '1999-10-02' },
-  { id: 'roswell_kid',  neighborhood: 'Area51/Corridor',      url: 'http://web.archive.org/web/19991003144825if_/http://www.geocities.com:80/Area51/Corridor/',       icon: '👽', updated: '1999-10-03' },
-  { id: 'xfiles_fan',   neighborhood: 'Area51/Vault',         url: 'http://web.archive.org/web/20000831055618if_/http://www.geocities.com:80/Area51/Vault/',          icon: '🔮', updated: '2000-08-31' },
-  { id: 'dim_traveler', neighborhood: 'Area51/Dimension',     url: 'http://web.archive.org/web/19991010053152if_/http://www.geocities.com:80/Area51/Dimension/',      icon: '🌀', updated: '1999-10-10' },
+  { id: 'truth_hunter', neighborhood: 'Area51/Capsule',       url: 'https://web.archive.org/web/19991002035510if_/http://www.geocities.com:80/Area51/Capsule/',        icon: '🛸', updated: '1999-10-02' },
+  { id: 'roswell_kid',  neighborhood: 'Area51/Corridor',      url: 'https://web.archive.org/web/19991003144825if_/http://www.geocities.com:80/Area51/Corridor/',       icon: '👽', updated: '1999-10-03' },
+  { id: 'xfiles_fan',   neighborhood: 'Area51/Vault',         url: 'https://web.archive.org/web/20000831055618if_/http://www.geocities.com:80/Area51/Vault/',          icon: '🔮', updated: '2000-08-31' },
+  { id: 'dim_traveler', neighborhood: 'Area51/Dimension',     url: 'https://web.archive.org/web/19991010053152if_/http://www.geocities.com:80/Area51/Dimension/',      icon: '🌀', updated: '1999-10-10' },
 
   // SiliconValley (2)
-  { id: 'code_warrior', neighborhood: 'SiliconValley/Bay',    url: 'http://web.archive.org/web/19991012180347if_/http://www.geocities.com:80/SiliconValley/Bay/',     icon: '💻', updated: '1999-10-12' },
-  { id: 'unix_geek',    neighborhood: 'SiliconValley/Lakes',  url: 'http://web.archive.org/web/20000929044227if_/http://www.geocities.com:80/SiliconValley/Lakes/',   icon: '🖥️', updated: '2000-09-29' },
+  { id: 'code_warrior', neighborhood: 'SiliconValley/Bay',    url: 'https://web.archive.org/web/19991012180347if_/http://www.geocities.com:80/SiliconValley/Bay/',     icon: '💻', updated: '1999-10-12' },
+  { id: 'unix_geek',    neighborhood: 'SiliconValley/Lakes',  url: 'https://web.archive.org/web/20000929044227if_/http://www.geocities.com:80/SiliconValley/Lakes/',   icon: '🖥️', updated: '2000-09-29' },
 
   // EnchantedForest (2)
-  { id: 'elf_maiden',   neighborhood: 'EnchantedForest/Glade',    url: 'http://web.archive.org/web/19991006033207if_/http://www.geocities.com:80/EnchantedForest/Glade/',    icon: '🧚', updated: '1999-10-06' },
-  { id: 'dragon_rider', neighborhood: 'EnchantedForest/Cottage',  url: 'http://web.archive.org/web/19990219223338if_/http://www.geocities.com:80/EnchantedForest/Cottage/',  icon: '🐉', updated: '1999-02-19' },
+  { id: 'elf_maiden',   neighborhood: 'EnchantedForest/Glade',    url: 'https://web.archive.org/web/19991006033207if_/http://www.geocities.com:80/EnchantedForest/Glade/',    icon: '🧚', updated: '1999-10-06' },
+  { id: 'dragon_rider', neighborhood: 'EnchantedForest/Cottage',  url: 'https://web.archive.org/web/19990219223338if_/http://www.geocities.com:80/EnchantedForest/Cottage/',  icon: '🐉', updated: '1999-02-19' },
 
   // Tokyo (2)
-  { id: 'anime_grrl',   neighborhood: 'Tokyo/Towers',         url: 'http://web.archive.org/web/19970424184212if_/http://www.geocities.com:80/Tokyo/Towers/',          icon: '🎌', updated: '1997-04-24' },
-  { id: 'manga_otaku',  neighborhood: 'Tokyo/Harbor',         url: 'http://web.archive.org/web/19990203095040if_/http://www.geocities.com:80/Tokyo/Harbor/',          icon: '🍣', updated: '1999-02-03' },
+  { id: 'anime_grrl',   neighborhood: 'Tokyo/Towers',         url: 'https://web.archive.org/web/19970424184212if_/http://www.geocities.com:80/Tokyo/Towers/',          icon: '🎌', updated: '1997-04-24' },
+  { id: 'manga_otaku',  neighborhood: 'Tokyo/Harbor',         url: 'https://web.archive.org/web/19990203095040if_/http://www.geocities.com:80/Tokyo/Harbor/',          icon: '🍣', updated: '1999-02-03' },
 
   // SoHo (2)
-  { id: 'art_nouveau',  neighborhood: 'SoHo/Lofts',           url: 'http://web.archive.org/web/19991004021252if_/http://www.geocities.com:80/SoHo/Lofts/',            icon: '🎨', updated: '1999-10-04' },
-  { id: 'poet_eternal', neighborhood: 'SoHo/Studios',         url: 'http://web.archive.org/web/20000303022304if_/http://www.geocities.com:80/SoHo/Studios/',          icon: '✒️', updated: '2000-03-03' },
+  { id: 'art_nouveau',  neighborhood: 'SoHo/Lofts',           url: 'https://web.archive.org/web/19991004021252if_/http://www.geocities.com:80/SoHo/Lofts/',            icon: '🎨', updated: '1999-10-04' },
+  { id: 'poet_eternal', neighborhood: 'SoHo/Studios',         url: 'https://web.archive.org/web/20000303022304if_/http://www.geocities.com:80/SoHo/Studios/',          icon: '✒️', updated: '2000-03-03' },
 
   // 散点邻里 (8)
-  { id: 'cat_lady_97',  neighborhood: 'Petsburgh/Park',       url: 'http://web.archive.org/web/19990826114514if_/http://www.geocities.com:80/Petsburgh/Park/',        icon: '🐱', updated: '1999-08-26' },
-  { id: 'mall_rat_98',  neighborhood: 'RodeoDrive/Mall',      url: 'http://web.archive.org/web/19991010235120if_/http://www.geocities.com:80/RodeoDrive/Mall/',       icon: '👗', updated: '1999-10-10' },
-  { id: 'bookworm99',   neighborhood: 'Wellesley/Garden',     url: 'http://web.archive.org/web/20000914030136if_/http://www.geocities.com:80/Wellesley/Garden/',      icon: '📖', updated: '2000-09-14' },
-  { id: 'apollo_fan',   neighborhood: 'CapeCanaveral/Launchpad', url: 'http://web.archive.org/web/19990202073412if_/http://www.geocities.com:80/CapeCanaveral/Launchpad/', icon: '🚀', updated: '1999-02-02' },
-  { id: 'mountain_man', neighborhood: 'Yosemite/Trails',      url: 'http://web.archive.org/web/20000915110006if_/http://www.geocities.com:80/Yosemite/Trails/',       icon: '🏔️', updated: '2000-09-15' },
-  { id: 'country_soul', neighborhood: 'Nashville/Stage',      url: 'http://web.archive.org/web/19990901180002if_/http://www.geocities.com:80/Nashville/Stage/',       icon: '🎸', updated: '1999-09-01' },
-  { id: 'jazz_cat',     neighborhood: 'BourbonStreet/Quarter', url: 'http://web.archive.org/web/19991009051243if_/http://www.geocities.com:80/BourbonStreet/Quarter/', icon: '🎷', updated: '1999-10-09' },
-  { id: 'big_apple',    neighborhood: 'TimesSquare/Arcade',   url: 'http://web.archive.org/web/19970421074936if_/http://www9.geocities.com:80/TimesSquare/Arcade/',  icon: '🗽', updated: '1997-04-21' }
+  { id: 'cat_lady_97',  neighborhood: 'Petsburgh/Park',       url: 'https://web.archive.org/web/19990826114514if_/http://www.geocities.com:80/Petsburgh/Park/',        icon: '🐱', updated: '1999-08-26' },
+  { id: 'mall_rat_98',  neighborhood: 'RodeoDrive/Mall',      url: 'https://web.archive.org/web/19991010235120if_/http://www.geocities.com:80/RodeoDrive/Mall/',       icon: '👗', updated: '1999-10-10' },
+  { id: 'bookworm99',   neighborhood: 'Wellesley/Garden',     url: 'https://web.archive.org/web/20000914030136if_/http://www.geocities.com:80/Wellesley/Garden/',      icon: '📖', updated: '2000-09-14' },
+  { id: 'apollo_fan',   neighborhood: 'CapeCanaveral/Launchpad', url: 'https://web.archive.org/web/19990202073412if_/http://www.geocities.com:80/CapeCanaveral/Launchpad/', icon: '🚀', updated: '1999-02-02' },
+  { id: 'mountain_man', neighborhood: 'Yosemite/Trails',      url: 'https://web.archive.org/web/20000915110006if_/http://www.geocities.com:80/Yosemite/Trails/',       icon: '🏔️', updated: '2000-09-15' },
+  { id: 'country_soul', neighborhood: 'Nashville/Stage',      url: 'https://web.archive.org/web/19990901180002if_/http://www.geocities.com:80/Nashville/Stage/',       icon: '🎸', updated: '1999-09-01' },
+  { id: 'jazz_cat',     neighborhood: 'BourbonStreet/Quarter', url: 'https://web.archive.org/web/19991009051243if_/http://www.geocities.com:80/BourbonStreet/Quarter/', icon: '🎷', updated: '1999-10-09' },
+  { id: 'big_apple',    neighborhood: 'TimesSquare/Arcade',   url: 'https://web.archive.org/web/19970421074936if_/http://www9.geocities.com:80/TimesSquare/Arcade/',  icon: '🗽', updated: '1997-04-21' }
 ];
 
 // ============================================================
