@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>后室档案 v3 · 类型可见 · 档案室/玩具房/幻境室/杂物间/休息室</title>
+<style>
+:root {
+  --bg: #0a0806;
+  --bg-card: #1a1814;
+  --text: #d4c8b0;
+  --text-dim: #8b7d65;
+  --accent: #c9a86a;
+  --border: #3d3528;
+  --good: #7a9967;
+  /* v3 类型配色 */
+  --t-archive: #6b8aa0;
+  --t-toy:     #c98a55;
+  --t-mirage:  #8a6dbf;
+  --t-junk:    #c98ab0;
+  --t-haven:   #7a9967;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Georgia', 'Songti SC', 'PingFang SC', sans-serif;
+  line-height: 1.6;
+  padding: 16px;
+  min-height: 100vh;
+}
+
+.container { max-width: 1100px; margin: 0 auto; position: relative; }
+
+header { text-align: center; padding: 14px 0 18px; border-bottom: 1px dashed var(--border); margin-bottom: 18px; }
+h1 { font-size: 22px; font-weight: normal; color: var(--accent); letter-spacing: 4px; margin-bottom: 6px; }
+.subtitle { color: var(--text-dim); font-size: 12px; font-style: italic; letter-spacing: 1px; }
+
+.info-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  justify-content: space-between;
+  align-items: center;
+}
+.info-bar .item { color: var(--text-dim); }
+.info-bar .item strong { color: var(--accent); font-size: 14px; }
+.info-bar .item.shell-name strong { color: var(--good); }
+.info-bar .item.url { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.info-bar .item.url strong { color: var(--text); font-size: 11px; }
+.info-bar .item.idle strong { color: #c98a8a; }
+
+/* v3 类型时间线 + 当前类型 */
+#type-timeline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+}
+#type-timeline .label { color: var(--text-dim); letter-spacing: 1px; min-width: 110px; }
+#timeline-pills { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.t-pill {
+  width: 36px;
+  height: 22px;
+  border-radius: 2px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  line-height: 22px;
+  opacity: 0.85;
+}
+.t-pill.archive { background: var(--t-archive); }
+.t-pill.toy     { background: var(--t-toy); }
+.t-pill.mirage  { background: var(--t-mirage); }
+.t-pill.junk    { background: var(--t-junk); }
+.t-pill.haven   { background: var(--t-haven); }
+.t-pill.current { opacity: 1; border: 2px solid var(--accent); box-shadow: 0 0 6px rgba(201,168,106,0.5); }
+.t-pill.empty { background: transparent; border: 1px dashed var(--border); color: var(--text-dim); }
+
+.info-bar .item.type-cell strong { padding: 1px 8px; border-radius: 2px; color: #fff; font-size: 12px; }
+
+.layout { display: grid; grid-template-columns: 1fr 240px; gap: 16px; }
+
+#stage { background: #444; border: 1px solid var(--border); min-height: 600px; position: relative; overflow: hidden; }
+#stage-frame { width: 100%; height: 600px; border: 0; display: block; }
+
+.placeholder-msg { color: #aaa; font-style: italic; text-align: center; font-size: 14px; padding: 40px; }
+
+/* ========================================
+   故障转场 黑屏 overlay (机制 2)
+======================================== */
+#transition-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 10;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+#transition-overlay.active { display: flex; }
+#transition-overlay .glitch-text {
+  text-shadow: 1px 0 0 #ff3, -1px 0 0 #3ff;
+  animation: glitch 0.1s steps(2, start) infinite;
+}
+@keyframes glitch {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(1px); }
+  100% { transform: translateX(-1px); }
+}
+
+/* ========================================
+   走廊转场 CSS 3D (机制 3)
+======================================== */
+#corridor-overlay {
+  position: absolute;
+  inset: 0;
+  background: #1a1408;
+  z-index: 9;
+  display: none;
+  perspective: 600px;
+  overflow: hidden;
+}
+#corridor-overlay.active { display: block; }
+
+/* ========================================
+   Loading overlay · iframe 加载等待 (v3.1)
+======================================== */
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 8, 6, 0.94);
+  z-index: 8;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  font-family: 'Courier New', monospace;
+}
+#loading-overlay.active { display: flex; }
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin-loader 0.9s linear infinite;
+  margin-bottom: 18px;
+}
+@keyframes spin-loader { to { transform: rotate(360deg); } }
+.loading-text {
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  margin-bottom: 10px;
+  text-transform: lowercase;
+}
+.loading-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  max-width: 480px;
+  padding: 0 20px;
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.5;
+}
+.loading-progress {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  letter-spacing: 1px;
+  font-style: italic;
+}
+#loading-retry {
+  display: none;
+  margin-top: 22px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 10px 22px;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+#loading-retry:hover { background: rgba(201,168,106,0.15); }
+#loading-retry.show { display: block; }
+
+.corridor-walls {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: walk-forward 4s linear forwards;
+}
+@keyframes walk-forward {
+  from { transform: translateZ(-3000px); }
+  to { transform: translateZ(0); }
+}
+.wall {
+  position: absolute;
+  background: linear-gradient(180deg, #b8a060 0%, #e0c878 50%, #806838 100%);
+  box-shadow: inset 0 0 80px rgba(80,40,0,0.6);
+}
+/* 4 面墙形成走廊 */
+.wall.ceil   { left:0; right:0; top:0;    height:160px; transform: rotateX(75deg) translateY(-80px); transform-origin: top; }
+.wall.floor  { left:0; right:0; bottom:0; height:160px; transform: rotateX(-75deg) translateY(80px);  transform-origin: bottom; background: linear-gradient(180deg,#604828 0%,#3a2818 100%); }
+.wall.left   { top:0; bottom:0; left:0;   width:200px;  transform: rotateY(75deg)  translateX(-100px); transform-origin: left; }
+.wall.right  { top:0; bottom:0; right:0;  width:200px;  transform: rotateY(-75deg) translateX(100px);  transform-origin: right; }
+
+.corridor-text {
+  position: absolute;
+  bottom: 20px;
+  left: 0; right: 0;
+  text-align: center;
+  color: #c9a86a;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  z-index: 11;
+  text-shadow: 0 0 6px rgba(201,168,106,0.8);
+}
+
+/* ========================================
+   红色 vignette · 不能停 (机制 6)
+======================================== */
+#red-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(140,0,0,var(--rv-intensity, 0)) 100%);
+  transition: background 0.4s linear;
+}
+
+#idle-warning {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ff4444;
+  font-family: 'Courier New', monospace;
+  font-size: 24px;
+  letter-spacing: 3px;
+  z-index: 101;
+  display: none;
+  text-align: center;
+  text-shadow: 0 0 12px rgba(255,0,0,0.8);
+  pointer-events: none;
+}
+#idle-warning.show { display: block; animation: pulse 0.8s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
+
+/* ========================================
+   里程碑短消息 (机制 4)
+======================================== */
+#milestone-toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: rgba(0,0,0,0.85);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 12px 18px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  z-index: 200;
+  display: none;
+  max-width: 320px;
+}
+#milestone-toast.show { display: block; animation: toast-in 0.4s ease-out; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#fullscreen-msg {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #ff4444;
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', monospace;
+  font-size: 30px;
+  letter-spacing: 6px;
+  text-align: center;
+}
+#fullscreen-msg.show { display: flex; }
+
+.door-bar { margin: 18px 0; display: flex; gap: 12px; align-items: center; justify-content: center; flex-direction: column; }
+.door-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  padding: 12px 32px;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.door-btn:hover { color: var(--text); border-color: var(--text); }
+.door-hint {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 1px;
+  max-width: 540px;
+  text-align: center;
+}
+.door-hint strong { color: var(--accent); }
+
+.reset-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.reset-btn:hover { color: #c98a8a; border-color: #c98a8a; }
+
+.sidebar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  height: fit-content;
+  position: sticky;
+  top: 16px;
+}
+.sidebar h3 { font-size: 12px; color: var(--accent); font-weight: normal; letter-spacing: 1.5px; margin-bottom: 8px; text-transform: uppercase; }
+.sidebar ul { list-style: none; padding: 0; font-size: 11px; font-family: 'Courier New', monospace; margin-bottom: 14px; }
+.sidebar li { padding: 2px 0; color: var(--text-dim); }
+.sidebar li.visited { color: var(--good); }
+.sidebar li.current { color: var(--accent); font-weight: bold; }
+.sidebar li.visited::before { content: '✓ '; }
+.sidebar li.current::before { content: '▸ '; }
+.sidebar .pool-stat {
+  font-size: 11px; color: var(--text-dim); font-family: 'Courier New', monospace;
+  padding-top: 10px; border-top: 1px dashed var(--border); line-height: 1.7;
+}
+.sidebar .pool-stat strong { color: var(--accent); }
+.sidebar .mech-list {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+.sidebar .mech-list strong { color: var(--accent); }
+
+footer { text-align: center; color: var(--text-dim); font-size: 11px; margin-top: 36px; padding-top: 18px; border-top: 1px dashed var(--border); font-style: italic; letter-spacing: 0.5px; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: relative; top: 0; }
+  #stage-frame { height: 500px; }
+  .info-bar { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div id="red-vignette"></div>
+<div id="idle-warning">不能停 · 还有 <span id="idle-countdown">10</span></div>
+<div id="milestone-toast"></div>
+<div id="fullscreen-msg"></div>
+
+<div class="container">
+
+<header>
+<h1>后 室 档 案 v3</h1>
+<p class="subtitle">— 类型可见 · 档案室 · 玩具房 · 幻境室 · 杂物间 · 休息室 —</p>
+</header>
+
+<div class="info-bar">
+  <div class="item">穿过 <strong id="counter">0</strong> 扇门</div>
+  <div class="item type-cell">类型: <strong id="type-name">—</strong></div>
+  <div class="item shell-name">外壳: <strong id="shell-name">—</strong></div>
+  <div class="item url">URL: <strong id="url-display">—</strong></div>
+  <div class="item">深度档: <strong id="depth-tier">0</strong></div>
+  <div class="item">集群: <strong id="cluster-name">—</strong></div>
+  <div class="item idle">停留 <strong id="idle-secs">0</strong>s</div>
+</div>
+
+<div id="type-timeline">
+<span class="label">最近 12 扇 →</span>
+<div id="timeline-pills"></div>
+</div>
+
+<div class="layout">
+
+<div id="stage">
+  <div id="stage-content">
+    <div class="placeholder-msg">点 任 何 一 扇 门</div>
+  </div>
+  <div id="transition-overlay"><span class="glitch-text" id="trans-text">connecting...</span></div>
+  <div id="corridor-overlay">
+    <div class="corridor-walls">
+      <div class="wall ceil"></div>
+      <div class="wall floor"></div>
+      <div class="wall left"></div>
+      <div class="wall right"></div>
+    </div>
+    <div class="corridor-text">穿过走廊…</div>
+  </div>
+  <div id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loading-text">noclip...</div>
+    <div class="loading-meta" id="loading-meta">—</div>
+    <div class="loading-progress" id="loading-progress">第 0 秒</div>
+    <button id="loading-retry" onclick="requestDoor()">这扇门好像没开 · 换一扇 → (或按 ESC)</button>
+  </div>
+</div>
+
+<aside class="sidebar">
+  <h3>外壳清单 (12)</h3>
+  <ul id="shell-list"></ul>
+  <div class="pool-stat">
+    URL 池: <strong>104</strong><br>
+    · Useless Web 101<br>
+    · JODI / Cameron's / Wiby
+  </div>
+  <div class="mech-list">
+    <strong>v1+v2 机制</strong><br>
+    · 拟态门 / 黑屏故障 0.5-2s<br>
+    · 走廊 10% / 里程碑 7/17/47/100<br>
+    · 10s 不动屏变红<br>
+    · 邻接图 + 深度 + 集群粘着<br>
+    <br>
+    <strong style="color:var(--good)">v3 新增 (类型可见)</strong><br>
+    · 5 类: <span style="color:var(--t-archive)">档案</span> / <span style="color:var(--t-toy)">玩具</span> / <span style="color:var(--t-mirage)">幻境</span> / <span style="color:var(--t-junk)">杂物</span> / <span style="color:var(--t-haven)">休息</span><br>
+    · 17 个真休息室 URL<br>
+    · 顶部 12 时间线<br>
+    · 信息栏显类型
+  </div>
+</aside>
+
+</div>
+
+<div class="door-bar">
+  <button class="door-btn" onclick="requestDoor()">[兜底] 开下一扇门 (或按 <strong>ESC</strong>)</button>
+  <p class="door-hint">主要触发: 点房间窗口的 <strong>× 关闭 / [exit] / 任何带 ⊗ 的按钮</strong> · 或**任何时候按 <strong>ESC 键</strong>**强制换门 (门没开 / 内容被封 / 想跳就用 ESC)</p>
+  <button class="reset-btn" onclick="resetAll()">重置进度</button>
+</div>
+
+<footer>
+v1 · 12 外壳 × 104 真页面 · 不能停 · 走久了有事 · 你被记录了
+</footer>
+
+</div>
+
+<script>
+const SHELLS = [
+  { id: '98',       name: '98.css · Win98' },
+  { id: 'xp',       name: 'XP.css · Win XP' },
+  { id: '7',        name: '7.css · Win7 Aero' },
+  { id: 'mac',      name: 'system.css · Mac System 6' },
+  { id: 'dos',      name: 'TuiCss · DOS' },
+  { id: 'nes',      name: 'NES.css · 8-bit' },
+  { id: 'terminal', name: 'terminal.css · Unix' },
+  { id: 'netscape', name: 'Netscape 4' },
+  { id: 'ie6',      name: 'IE6 · 蓝条' },
+  { id: 'wap',      name: 'WAP 翻盖手机' },
+  { id: 'msn',      name: 'MSN Messenger' },
+  { id: 'bbs',      name: 'BBS ANSI' }
+];
+
+
+// 共享脚本: 注入到每个外壳 iframe, 让 close 按钮触发 nextDoor
+const SHELL_SCRIPT = '<scr' + 'ipt>function _door(e){if(e)e.preventDefault();window.parent.postMessage({type:"nextDoor"},"*");}window.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("[data-door]").forEach(function(el){el.style.cursor="pointer";el.addEventListener("click",_door);});});window.addEventListener("keydown",function(e){if(e.key==="Escape"){_door(e);}});<\/scr' + 'ipt>';
+
+function renderShell(shellId, contentUrl) {
+  const innerIframe = `<iframe src="${contentUrl}" style="width:100%;height:480px;border:0;display:block;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>`;
+  let body = '';
+  switch(shellId) {
+    case '98':
+      body = `<link rel="stylesheet" href="https://unpkg.com/98.css"><style>body{background:#008080;padding:20px;margin:0;}.window{max-width:760px;margin:0 auto;}.window-body{padding:0!important;}</style>
+<div class="window"><div class="title-bar"><div class="title-bar-text">${truncate(contentUrl, 50)}</div><div class="title-bar-controls"><button aria-label="Minimize"></button><button aria-label="Maximize"></button><button aria-label="Close" data-door></button></div></div><div class="window-body">${innerIframe}</div></div>`;
+      break;
+    case 'xp':
+      body = `<link rel="stylesheet" href="https://unpkg.com/xp.css"><style>body{background:#3a93ff;padding:20px;margin:0;}.window{max-width:760px;margin:0 auto;}.window-body{padding:0!important;}</style>
+<div class="window"><div class="title-bar"><div class="title-bar-text">${truncate(contentUrl, 50)}</div><div class="title-bar-controls"><button aria-label="Minimize"></button><button aria-label="Maximize"></button><button aria-label="Close" data-door></button></div></div><div class="window-body">${innerIframe}</div></div>`;
+      break;
+    case '7':
+      body = `<link rel="stylesheet" href="https://unpkg.com/7.css"><style>body{background:linear-gradient(180deg,#85b1de,#3a6da3);padding:20px;margin:0;}.window{max-width:760px;margin:0 auto;}.window-body{padding:0!important;}</style>
+<div class="window glass active"><div class="title-bar"><div class="title-bar-text">${truncate(contentUrl, 50)}</div><div class="title-bar-controls"><button aria-label="Minimize"></button><button aria-label="Maximize"></button><button aria-label="Close" data-door></button></div></div><div class="window-body has-space" style="padding:0;">${innerIframe}</div></div>`;
+      break;
+    case 'mac':
+      body = `<link rel="stylesheet" href="https://unpkg.com/@sakun/system.css"><style>body{background:#c0c0c0;padding:16px;margin:0;}.window{max-width:760px;margin:0 auto;}.window-pane{padding:0!important;}</style>
+<div class="window"><div class="title-bar"><button aria-label="Close" class="close" data-door></button><h1 class="title">${truncate(contentUrl, 50)}</h1><button aria-label="Resize" class="resize"></button></div><div class="separator"></div><div class="window-pane">${innerIframe}</div></div>`;
+      break;
+    case 'dos':
+      body = `<link rel="stylesheet" href="https://unpkg.com/tuicss@2.1.2/dist/tuicss.min.css"><style>html,body{margin:0;height:100%;}.tui-window{max-width:780px;margin:14px auto;}fieldset.tui-fieldset{padding:0;position:relative;}.exit-link{position:absolute;top:4px;right:10px;color:#ff6;font-family:monospace;font-size:11px;z-index:9;background:#0066cc;padding:2px 6px;}</style>
+<div class="tui-window full-width"><fieldset class="tui-fieldset"><legend>${truncate(contentUrl, 60)}</legend><span class="exit-link" data-door>[F10 EXIT]</span>${innerIframe}</fieldset></div>`;
+      break;
+    case 'nes':
+      body = `<link rel="stylesheet" href="https://unpkg.com/nes.css@latest/css/nes.min.css"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family:'Press Start 2P',cursive;background:#000;margin:0;padding:14px;position:relative;}.nes-container{margin:0 auto;max-width:760px;padding:14px;}.nes-close{position:absolute;top:18px;right:24px;color:#e76e55;font-size:14px;z-index:5;cursor:pointer;}</style>
+<button class="nes-close" data-door>× CLOSE</button><div class="nes-container is-dark with-title"><p class="title" style="font-size:9px;">${truncate(contentUrl, 60)}</p>${innerIframe}</div>`;
+      break;
+    case 'terminal':
+      body = `<link rel="stylesheet" href="https://unpkg.com/terminal.css@0.7.x/dist/terminal.min.css"><style>body{margin:0;padding:18px;background:#fff;color:#151515;}.container{max-width:760px;margin:0 auto;}.exit-cmd{color:#a00;cursor:pointer;text-decoration:underline;}</style>
+<div class="terminal container"><header><h1>~/archive/door</h1><p><i>${truncate(contentUrl, 70)}</i></p><p><span class="exit-cmd" data-door>$ exit ⏎</span></p></header><main>${innerIframe}</main></div>`;
+      break;
+    case 'netscape':
+      body = `<style>body{margin:0;font-family:'Times New Roman',serif;background:#0a0806;padding:20px;}.frame{background:#c0c0c0;border:2px solid;border-color:#fff #606060 #606060 #fff;max-width:760px;margin:0 auto;}.tb{background:#aaa;padding:2px 6px;display:flex;justify-content:space-between;font-family:'MS Sans Serif',sans-serif;font-size:11px;border-bottom:1px solid #606060;}.ctrls{display:flex;gap:3px;}.ctrls span{cursor:default;}.ctrls .x{cursor:pointer;background:#c0c0c0;border:1px solid;border-color:#fff #606060 #606060 #fff;padding:0 4px;}.mb{background:#c0c0c0;padding:2px 6px;border-bottom:1px solid #808080;font-family:'MS Sans Serif',sans-serif;font-size:11px;}.mb span{margin-right:10px;}.toolbar{background:#c0c0c0;padding:4px 6px;display:flex;gap:4px;align-items:center;border-bottom:1px solid #808080;}.tb-btn{background:#c0c0c0;border:1px solid;border-color:#fff #606060 #606060 #fff;padding:1px 6px;font-size:10px;}.addr{flex:1;background:#fff;border:1px solid;border-color:#606060 #fff #fff #606060;padding:1px 4px;font-family:'Courier New',monospace;font-size:11px;}.statusbar{background:#c0c0c0;padding:2px 6px;border-top:1px solid #fff;display:flex;justify-content:space-between;font-size:10px;font-family:'MS Sans Serif',sans-serif;}.nlogo{background:#6a4a89;color:#fff;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-family:serif;}</style>
+<div class="frame"><div class="tb"><span>Netscape - [${truncate(contentUrl, 40)}]</span><span class="ctrls"><span>_</span><span>□</span><span class="x" data-door>×</span></span></div><div class="mb"><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Bookmarks</span><span>Options</span><span>Help</span></div><div class="toolbar"><button class="tb-btn">◄ Back</button><button class="tb-btn">► Fwd</button><button class="tb-btn">⟳</button><button class="tb-btn">🏠</button><span style="font-size:10px">Location:</span><span class="addr">${contentUrl}</span></div>${innerIframe}<div class="statusbar"><span>Done.</span><div class="nlogo">N</div></div></div>`;
+      break;
+    case 'ie6':
+      body = `<style>body{margin:0;font-family:'Tahoma',sans-serif;background:#0a0806;padding:20px;}.frame{background:#ece9d8;border:1px solid #0054e3;max-width:760px;margin:0 auto;}.tb{background:linear-gradient(180deg,#0054e3,#2787f5 8%,#0054e3 100%);color:#fff;padding:3px 8px;display:flex;justify-content:space-between;font-weight:bold;font-size:11px;}.ctrls{display:flex;gap:3px;}.ctrls .x{cursor:pointer;background:#e81123;color:#fff;padding:0 6px;}.mb{background:#ece9d8;padding:2px 8px;font-size:11px;border-bottom:1px solid #aaa;}.mb span{margin-right:10px;}.toolbar{background:#ece9d8;padding:3px 6px;display:flex;gap:4px;align-items:center;border-bottom:1px solid #aaa;}.tb-btn{background:#ece9d8;border:1px solid transparent;padding:2px 6px;font-size:11px;}.addr{flex:1;background:#fff;border:1px solid #999;padding:1px 4px;font-size:11px;}.ie-logo{width:14px;height:14px;background:#0054e3;color:#fff;font-weight:bold;display:flex;align-items:center;justify-content:center;font-size:9px;}</style>
+<div class="frame"><div class="tb"><span>${truncate(contentUrl, 50)} - Microsoft Internet Explorer</span><span class="ctrls"><span>_</span><span>□</span><span class="x" data-door>×</span></span></div><div class="mb"><span>文件(F)</span><span>编辑(E)</span><span>查看(V)</span><span>收藏(A)</span><span>工具(T)</span><span>帮助(H)</span></div><div class="toolbar"><button class="tb-btn">◄ 后退</button><button class="tb-btn">► 前进</button><button class="tb-btn">⟳ 刷新</button><button class="tb-btn">🏠</button><span style="font-size:11px">地址:</span><span class="addr">${contentUrl}</span><div class="ie-logo">e</div></div>${innerIframe}</div>`;
+      break;
+    case 'wap': {
+      const wapInner = `<iframe src="${contentUrl}" style="width:100%;height:280px;border:0;display:block;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+      body = `<style>body{background:#0a0806;margin:0;padding:30px;display:flex;justify-content:center;align-items:center;min-height:500px;}.phone{background:#2a2a2a;padding:24px 28px 36px;border-radius:18px;width:280px;box-shadow:0 8px 40px rgba(0,0,0,0.7);}.screen{background:#9bc4a0;color:#1a3a1a;font-family:'Courier New',monospace;font-size:10px;padding:8px;border:3px inset #555;}.signal{display:flex;justify-content:space-between;font-size:9px;margin-bottom:4px;color:#1a3a1a;}.title{font-weight:bold;border-bottom:1px dashed #1a3a1a;padding-bottom:3px;margin-bottom:5px;font-size:10px;}.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:14px;}.key{background:#444;color:#aaa;padding:6px;text-align:center;font-size:11px;border-radius:4px;font-family:monospace;}.key.hang{background:#900;color:#fff;cursor:pointer;}</style>
+<div class="phone"><div class="screen"><div class="signal"><span>📶📶📶</span><span>🔋██</span></div><div class="title">${truncate(contentUrl, 22)}</div>${wapInner}</div><div class="keypad"><div class="key">1</div><div class="key">2 ABC</div><div class="key">3 DEF</div><div class="key">4 GHI</div><div class="key">5 JKL</div><div class="key">6 MNO</div><div class="key">7 PQRS</div><div class="key">8 TUV</div><div class="key">9 WXYZ</div><div class="key">*</div><div class="key">0 _</div><div class="key hang" data-door>挂断</div></div></div>`;
+      break;
+    }
+    case 'msn':
+      body = `<style>body{margin:0;padding:20px;background:#0a0806;font-family:'Tahoma',sans-serif;}.win{background:linear-gradient(180deg,#6cb8e8,#2a8ed1);max-width:760px;margin:0 auto;border-radius:6px 6px 0 0;overflow:hidden;font-size:11px;}.tb{padding:5px 10px;color:#fff;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}.tb .x{cursor:pointer;background:rgba(255,255,255,0.3);padding:0 8px;border-radius:2px;}.head{background:#fff;padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #ccc;}.avatar{width:36px;height:36px;background:#ff9d3f;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:18px;}.nick{font-weight:bold;color:#2a8ed1;font-size:12px;}.input{background:#fff;padding:6px 12px;font-size:11px;color:#888;border-top:1px solid #ccc;}</style>
+<div class="win"><div class="tb"><span>💬 阿土 - 会话 - 已断开连接</span><span class="x" data-door>×</span></div><div class="head"><div class="avatar">🐱</div><div><div class="nick">阿土 (离线)</div><div style="font-size:10px;color:#888;">个签: ${truncate(contentUrl, 35)}</div></div></div>${innerIframe}<div class="input">😀 🌹 ☕ &nbsp;&nbsp; 对方已离线, 消息将以脱机方式发送</div></div>`;
+      break;
+    case 'bbs':
+      body = `<style>body{background:#000;margin:0;padding:20px;color:#00bcd4;font-family:'Courier New',monospace;font-size:12px;}.frame{max-width:780px;margin:0 auto;border:3px double #555;padding:14px;background:#000;}.banner{color:#ffd54f;text-align:center;margin-bottom:10px;font-weight:bold;}.url-line{color:#81c784;margin-bottom:8px;font-size:11px;}.exit-line{text-align:right;color:#f06292;margin-top:6px;cursor:pointer;}.exit-line:hover{color:#fff;}</style>
+<div class="frame"><pre class="banner">╔════════════════════════════════════════╗
+║   ★ 后室档案 BBS · 跳转中... ★    ║
+╚════════════════════════════════════════╝</pre><div class="url-line">&gt; CONNECT: ${contentUrl}</div>${innerIframe}<div class="exit-line" data-door>[ESC] 断开连接 · 开下一扇门</div></div>`;
+      break;
+    default:
+      body = `<div style="background:#222;color:#fff;font-family:monospace;padding:40px;">[shell missing: ${shellId}]</div>`;
+  }
+  return `<!DOCTYPE html><html><head></head><body>${body}${SHELL_SCRIPT}</body></html>`;
+}
+
+function truncate(s, n) { if (!s) return ''; return s.length > n ? s.substring(0, n - 1) + '…' : s; }
+
+// ============================================================
+// v2 规则随机 配置表 (机制 1+2+3+4)
+// ============================================================
+
+// 机制 1: 12×12 邻接矩阵 (from → to 的概率权重, 每行总和≈100)
+const ADJACENCY = {
+  '98':       { 'xp':30, '7':15, 'ie6':15, 'netscape':10, 'mac':5,  'dos':5,  'bbs':3,  'terminal':3,  'nes':5,  'wap':4,  'msn':5 },
+  'xp':       { '7':25, '98':25, 'ie6':15, 'msn':10, 'netscape':8, 'mac':5,  'dos':3,  'bbs':2,  'terminal':2, 'nes':2, 'wap':3 },
+  '7':        { 'xp':30, 'msn':20, '98':10, 'ie6':8,  'mac':5,  'netscape':5, 'dos':5, 'bbs':3, 'terminal':3, 'nes':3, 'wap':8 },
+  'mac':      { 'terminal':20, 'netscape':15, '98':10, 'xp':8,  '7':5,  'ie6':10, 'dos':10, 'bbs':5,  'nes':5,  'wap':5,  'msn':7 },
+  'dos':      { 'bbs':35, 'terminal':25, '98':8,  'netscape':5, 'mac':5,  'ie6':5, 'xp':3, '7':2, 'nes':5, 'wap':3, 'msn':4 },
+  'bbs':      { 'terminal':30, 'dos':25, 'netscape':15, '98':5, 'mac':5, 'ie6':5,  'xp':3, '7':2, 'nes':3, 'wap':3, 'msn':4 },
+  'terminal': { 'dos':25, 'bbs':25, 'mac':15, 'netscape':10, '98':5, 'ie6':5, 'xp':3, '7':2, 'nes':3, 'wap':3, 'msn':4 },
+  'netscape': { 'ie6':40, '98':20, 'mac':10, '7':5,  'xp':5,  'bbs':5, 'dos':5, 'terminal':3, 'nes':2, 'wap':2, 'msn':3 },
+  'ie6':      { 'xp':30, 'netscape':20, '98':15, 'msn':10, '7':8, 'mac':5, 'dos':3, 'bbs':2, 'terminal':2, 'nes':2, 'wap':3 },
+  'nes':      { '98':12, 'terminal':10, 'dos':10, 'xp':10, 'mac':10, 'wap':10, '7':8, 'ie6':7, 'netscape':5, 'bbs':5, 'msn':13 },
+  'wap':      { 'msn':30, 'ie6':15, '98':10, 'xp':10, '7':10, 'netscape':5, 'mac':5, 'dos':5, 'bbs':3, 'terminal':3, 'nes':4 },
+  'msn':      { 'wap':25, 'xp':20, '7':15, 'ie6':10, '98':8, 'netscape':5, 'mac':5, 'dos':3, 'bbs':3, 'terminal':3, 'nes':3 }
+};
+
+// 机制 2: 深度梯度 · 越走越脏
+// 不同档对外壳家族的整体倍率
+const DEPTH_TIER_MULT = {
+  // tier 0: 0-9 扇 (新手友好, Windows 多)
+  0: { windows: 1.6, browser: 1.1, mac: 0.7, terminal: 0.3, mobile: 0.5, game: 0.5 },
+  // tier 1: 10-29 扇 (混合)
+  1: { windows: 1.0, browser: 1.0, mac: 1.0, terminal: 1.0, mobile: 1.0, game: 1.0 },
+  // tier 2: 30-49 扇 (开始变脏)
+  2: { windows: 0.7, browser: 1.0, mac: 1.2, terminal: 1.5, mobile: 1.3, game: 1.2 },
+  // tier 3: 50+ 扇 (深处)
+  3: { windows: 0.4, browser: 0.7, mac: 1.0, terminal: 2.0, mobile: 1.5, game: 1.5 }
+};
+
+function depthTierOf(count) {
+  if (count < 10) return 0;
+  if (count < 30) return 1;
+  if (count < 50) return 2;
+  return 3;
+}
+
+// 机制 3: 集群定义 + 粘着
+const CLUSTERS = {
+  'windows':  ['98','xp','7','ie6'],
+  'browser':  ['netscape','ie6'],     // ie6 跨两个 cluster, 优先 windows
+  'mac':      ['mac'],
+  'terminal': ['dos','bbs','terminal'],
+  'mobile':   ['wap','msn'],
+  'game':     ['nes']
+};
+
+const SHELL_TO_CLUSTER = {
+  '98':'windows', 'xp':'windows', '7':'windows', 'ie6':'windows',
+  'netscape':'browser',
+  'mac':'mac',
+  'dos':'terminal', 'bbs':'terminal', 'terminal':'terminal',
+  'wap':'mobile', 'msn':'mobile',
+  'nes':'game'
+};
+
+// 机制 4: URL 分组 + 外壳偏好
+const URL_GROUPS = {
+  // 档案室 (text) - 纯文字/资料/学术
+  text: [
+    'http://blankwindows.com/', 'http://unicodesnowmanforyou.com/',
+    'http://www.ismycomputeron.com/',
+    'http://www.movenowthinklater.com/', 'http://www.muchbetterthanthis.com/',
+    'http://www.nullingthevoid.com/', 'http://yeahlemons.com/',
+    'http://notdayoftheweek.com/', 'http://www.amialright.com/',
+    'http://www.everydayim.com/', 'http://www.yesnoif.com/',
+    'https://cant-not-tweet-this.com/', 
+    'https://wwwwwwwww.jodi.org/',
+    'https://thatsthefinger.com/', 'https://wiby.me/surprise/'
+  ],
+  // 玩具房 (game) - 可玩 / 互动 / 小游戏
+  game: [
+    'https://ant.toys', 'https://checkbox.toys/scale/',
+    'https://clicking.toys/flip-grid/neat-nine/3-holes/',
+    'https://dice.toys/toy/greedy-pig/',
+    'https://maze.toys/mazes/mini/daily/', 'https://musical.toys',
+    'https://musical.toys/toys/pendulum-waves/', 'https://musical.toys/toys/polyrhythm/',
+    'https://musical.toys/toys/snapegiator/', 'https://number.toys/',
+    'https://optical.toys', 'https://optical.toys/thatcher-effect/',
+    'https://paint.toys', 'https://paint.toys/', 'https://paint.toys/calligram/',
+    'https://paint.toys/symmetry/', 'https://poetic.toys/poems/river-of-reverence/',
+    'https://sliding.toys/mystic-square/15-puzzle/daily/',
+    'https://sliding.toys/mystic-square/8-puzzle/daily/',
+    'https://toms.toys', 'https://toybox.toms.toys',
+    'https://onesquareminesweeper.com/', 'https://checkboxrace.com/',
+    'https://longdogechallenge.com/', 'http://onemillionlols.com/',
+    'https://wowenwilsonquiz.com',
+    'https://binarypiano.com/', 'https://dadlaughbutton.com/'
+  ],
+  // 幻境室 (visual) - 视觉冲击 / 屏幕效果
+  visual: [
+    'http://oct82.com/', 'http://lacquerlacquer.com', 'http://maninthedark.com/',
+    'http://randomcolour.com/', 'http://scroll-o-meter.club/',
+    'http://spaceis.cool/', 'http://tencents.info/', 
+    'http://www.crossdivisions.com/', 'http://www.doublepressure.com/',
+    'http://www.rrrgggbbb.com/',
+    'http://www.staggeringbeauty.com/', 'http://www.trashloop.com/',
+    'https://cursoreffects.com', 'https://jacksonpollock.org/',
+    'https://loopedforinfinity.com/', 'https://mondrianandme.com/',
+    'https://pointerpointer.com', 'https://remoji.com/',
+    'https://rotatingsandwiches.com/', 'https://smashthewalls.com/',
+    'https://thevintageweb.com/', 'https://wigglyme.com/',
+    'https://xn--gi8h42h.ws/', 'https://zoomquilt.org/',
+    'https://www.cameronsworld.net/'
+  ],
+  // 杂物间 (silly) - 无意义 / 怪东西
+  silly: [
+    'http://iamawesome.com/', 'http://ihasabucket.com/', 'http://isitwhite.com/',
+    'http://ninjaflex.com/', 'http://papertoilet.com/', 
+    'http://thisisnotajumpscare.com/', 'http://www.partridgegetslucky.com/',
+    'http://www.republiquedesmangues.fr/', 'http://www.wutdafuk.com/',
+    'http://www.omfgdogs.com/', 'https://alwaysjudgeabookbyitscover.com',
+    'https://duckstreet.net/', 'https://end.city/', 'https://puginarug.com',
+    'https://weirdorconfusing.com/', 'https://www.trypap.com/'
+  ],
+  // 休息室 (safe) - 7 retag + 10 新加 = 17 个真正安静的房间
+  safe: [
+    // 7 个 retag (从原 text/game 移过来 — 它们其实是 calm)
+    'http://endless.horse/',                     // 极简静帧
+    // 强制 2 分钟不动
+    'http://www.patience-is-a-virtue.org/',      // 耐心
+    'https://boringboringboring.com/',           // boring
+    'https://greatbignothing.com/',              // 白页
+    'https://thezen.zone/',                      // zen
+    'https://paint.toys/zen-garden/',            // 沙园
+    'https://paint.toys/sand/',                  // 画沙
+    'https://patience.toys',                     // patience
+    'https://card.toys/klondike/',               // Klondike
+    'https://clicking.toys/peg-solitaire/english/', // peg solitaire
+    // 10 个 新加 (curl 验证过 iframe)
+    'https://wiby.me/',                          // Wiby 主搜索
+    'https://oocities.org/',                     // GeoCities 镜像
+    'https://www.gutenberg.org/',                // 古登堡
+    'https://textfiles.com/',                    // BBS 文本档案 ⭐
+    'https://www.rfc-editor.org/',               // RFC 档案
+    'http://classics.mit.edu/',                  // MIT 古典文献
+    // Perseus 百科
+    'https://www.scoresandscripts.com/',         // 电影剧本档案
+    'https://manylines.org/',                    // 慢网络
+    'https://www.gutenberg.org/cache/epub/1342/pg1342-images.html'  // 傲慢与偏见 ⭐
+  ]
+};
+
+// 外壳对各类 URL 的偏好权重 (v3 加 safe 类, sum 不必 100, 相对即可)
+const SHELL_URL_BIAS = {
+  '98':       { text: 22, game: 22, visual: 25, silly: 16, safe: 15 },
+  'xp':       { text: 18, game: 25, visual: 25, silly: 17, safe: 15 },
+  '7':        { text: 12, game: 22, visual: 30, silly: 21, safe: 15 },
+  'mac':      { text: 25, game: 15, visual: 25, silly: 15, safe: 20 },
+  'dos':      { text: 45, game: 8,  visual: 12, silly: 10, safe: 25 },  // 终端 + 档案
+  'bbs':      { text: 50, game: 5,  visual: 10, silly: 10, safe: 25 },  // 终端 + 档案
+  'terminal': { text: 45, game: 8,  visual: 12, silly: 10, safe: 25 },  // 终端 + 档案
+  'netscape': { text: 25, game: 15, visual: 20, silly: 20, safe: 20 },  // 浏览老 GeoCities
+  'ie6':      { text: 18, game: 20, visual: 25, silly: 22, safe: 15 },
+  'nes':      { text: 8,  game: 65, visual: 12, silly: 5,  safe: 10 },
+  'wap':      { text: 15, game: 25, visual: 12, silly: 30, safe: 18 },
+  'msn':      { text: 20, game: 17, visual: 12, silly: 36, safe: 15 }
+};
+
+// ============================================================
+// 规则随机 · 核心函数
+// ============================================================
+
+function weightedRandom(weights) {
+  const keys = Object.keys(weights);
+  let total = 0;
+  for (const k of keys) total += weights[k];
+  if (total <= 0) return keys[Math.floor(Math.random() * keys.length)];
+  let r = Math.random() * total;
+  for (const k of keys) {
+    r -= weights[k];
+    if (r <= 0) return k;
+  }
+  return keys[keys.length - 1];
+}
+
+function pickNextShell(currentShell, count, lastCluster, clusterStayCount) {
+  // 1. 取邻接 (机制 1)
+  const baseWeights = currentShell && ADJACENCY[currentShell]
+    ? { ...ADJACENCY[currentShell] }
+    : Object.fromEntries(SHELLS.map(s => [s.id, 1]));
+
+  // 2. 深度倍率 (机制 2)
+  const tier = depthTierOf(count);
+  const tierMult = DEPTH_TIER_MULT[tier];
+  for (const k in baseWeights) {
+    const cluster = SHELL_TO_CLUSTER[k] || 'windows';
+    baseWeights[k] = baseWeights[k] * (tierMult[cluster] || 1);
+  }
+
+  // 3. 集群粘着 (机制 3) - 在同一集群停留 < 3 扇时, 70% 概率留集群
+  if (currentShell && clusterStayCount < 3) {
+    const curCluster = SHELL_TO_CLUSTER[currentShell];
+    if (curCluster) {
+      const inClusterShells = CLUSTERS[curCluster] || [];
+      let inSum = 0, outSum = 0;
+      for (const k in baseWeights) {
+        if (inClusterShells.includes(k)) inSum += baseWeights[k];
+        else outSum += baseWeights[k];
+      }
+      const TARGET_IN = 0.7, TARGET_OUT = 0.3;
+      if (inSum > 0 && outSum > 0) {
+        const totalNow = inSum + outSum;
+        const inMul = (TARGET_IN * totalNow) / inSum;
+        const outMul = (TARGET_OUT * totalNow) / outSum;
+        for (const k in baseWeights) {
+          if (inClusterShells.includes(k)) baseWeights[k] *= inMul;
+          else baseWeights[k] *= outMul;
+        }
+      }
+    }
+  }
+
+  return weightedRandom(baseWeights);
+}
+
+function pickURLForShell(shellId) {
+  // 机制 4: URL-外壳偏置
+  const bias = SHELL_URL_BIAS[shellId] || { text: 25, game: 25, visual: 25, silly: 25 };
+  const tag = weightedRandom(bias);
+  const pool = URL_GROUPS[tag] || URL_GROUPS.silly;
+  if (pool.length === 0) {
+    // fallback: 随机抽全池
+    const all = [...URL_GROUPS.text, ...URL_GROUPS.game, ...URL_GROUPS.visual, ...URL_GROUPS.silly, ...URL_GROUPS.safe];
+    return all[Math.floor(Math.random() * all.length)];
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// v3.2: 运行时 URL 探测 + session 黑名单
+const failedUrls = new Set();
+async function isUrlReachable(url) {
+  if (failedUrls.has(url)) return false;
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 4000);
+    await fetch(url, { mode: 'no-cors', signal: ctrl.signal, redirect: 'follow' });
+    clearTimeout(tid);
+    return true;
+  } catch (e) {
+    failedUrls.add(url);
+    console.log('[failed url]', url, e.message);
+    return false;
+  }
+}
+
+async function pickValidUrlForShell(shellId, attemptCb) {
+  // 最多试 3 次, 都失败就 fallback 用最后一个 (UX 反正 ESC 能换)
+  for (let i = 0; i < 3; i++) {
+    const url = pickURLForShell(shellId);
+    if (attemptCb) attemptCb(i + 1, url);
+    if (await isUrlReachable(url)) return url;
+  }
+  return pickURLForShell(shellId);
+}
+
+const STORE = 'backrooms_v3';
+
+// v3 类型重命名 + 配色
+const TYPE_LABELS = {
+  text:   { name: '档案室', shortChar: '档', cls: 'archive' },
+  game:   { name: '玩具房', shortChar: '玩', cls: 'toy' },
+  visual: { name: '幻境室', shortChar: '幻', cls: 'mirage' },
+  silly:  { name: '杂物间', shortChar: '杂', cls: 'junk' },
+  safe:   { name: '休息室', shortChar: '息', cls: 'haven' }
+};
+
+// 反查: URL → 类型 (供显示用)
+const URL_TO_TYPE = {};
+for (const t in URL_GROUPS) {
+  URL_GROUPS[t].forEach(url => { URL_TO_TYPE[url] = t; });
+}
+
+function getState() { return JSON.parse(localStorage.getItem(STORE) || '{"count":0,"visited":[]}'); }
+function saveState(s) { localStorage.setItem(STORE, JSON.stringify(s)); }
+
+// ========================================
+// 故障转场 · 拨号合成器
+// ========================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playGlitchSound(duration) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const dur = duration / 1000;
+  // 拨号风: 两层 oscillator + 衰减
+  const osc1 = ctx.createOscillator();
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(800 + Math.random()*200, now);
+  osc1.frequency.exponentialRampToValueAtTime(2200, now + dur * 0.6);
+  osc1.frequency.exponentialRampToValueAtTime(400, now + dur);
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'square';
+  osc2.frequency.setValueAtTime(1100, now);
+  osc2.frequency.exponentialRampToValueAtTime(700, now + dur);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.04, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+  osc1.start(now); osc2.start(now);
+  osc1.stop(now + dur); osc2.stop(now + dur);
+}
+function playHeartbeat() {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(60, now);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.15, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.3);
+}
+
+const TRANS_TEXTS = ['connecting...', 'noclip...', '断线重连...', 'loading...', '...', 'where am I'];
+
+function showTransition(duration) {
+  const ov = document.getElementById('transition-overlay');
+  document.getElementById('trans-text').textContent = TRANS_TEXTS[Math.floor(Math.random()*TRANS_TEXTS.length)];
+  ov.classList.add('active');
+  return new Promise(resolve => setTimeout(() => { ov.classList.remove('active'); resolve(); }, duration));
+}
+function showCorridor(duration) {
+  const ov = document.getElementById('corridor-overlay');
+  // reset animation
+  const walls = ov.querySelector('.corridor-walls');
+  walls.style.animation = 'none';
+  void walls.offsetWidth; // force reflow
+  walls.style.animation = `walk-forward ${duration}ms linear forwards`;
+  ov.classList.add('active');
+  return new Promise(resolve => setTimeout(() => { ov.classList.remove('active'); resolve(); }, duration));
+}
+
+// ========================================
+// Loading overlay · iframe 加载等待
+// ========================================
+const LOADING_TEXTS = ['noclip...', 'connecting...', '穿过墙...', '寻找门...', 'loading...'];
+let loadingStartTime = 0;
+let loadingTickTimer = null;
+let loadingRetryTimer = null;
+
+function showLoading(shellName, url) {
+  const ov = document.getElementById('loading-overlay');
+  document.getElementById('loading-text').textContent = LOADING_TEXTS[Math.floor(Math.random()*LOADING_TEXTS.length)];
+  const shortUrl = url && url.length > 60 ? url.substring(0, 58) + '…' : (url || '—');
+  document.getElementById('loading-meta').innerHTML = `<strong style="color:var(--accent)">${shellName || '?'}</strong><br>${shortUrl}`;
+  document.getElementById('loading-retry').classList.remove('show');
+  ov.classList.add('active');
+  loadingStartTime = Date.now();
+  if (loadingTickTimer) clearInterval(loadingTickTimer);
+  loadingTickTimer = setInterval(() => {
+    const sec = Math.floor((Date.now() - loadingStartTime) / 1000);
+    const prog = document.getElementById('loading-progress');
+    if (prog) prog.textContent = '第 ' + sec + ' 秒' + (sec > 6 ? ' (慢站, 再等等)' : '');
+  }, 250);
+  // 6s 后出现"换一扇"按钮 (更早提示 · 配合 ESC 全局兜底)
+  if (loadingRetryTimer) clearTimeout(loadingRetryTimer);
+  loadingRetryTimer = setTimeout(() => {
+    document.getElementById('loading-retry').classList.add('show');
+  }, 6000);
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('active');
+  if (loadingTickTimer) { clearInterval(loadingTickTimer); loadingTickTimer = null; }
+  if (loadingRetryTimer) { clearTimeout(loadingRetryTimer); loadingRetryTimer = null; }
+}
+
+function attachIframeLoad() {
+  // 等下一帧让 stage-frame 在 DOM 中
+  requestAnimationFrame(() => {
+    const frame = document.getElementById('stage-frame');
+    if (!frame) return;
+    // outer iframe (shell HTML) load 后再延 600ms 给 inner iframe 一点缓冲
+    frame.addEventListener('load', () => setTimeout(hideLoading, 600), { once: true });
+    // 兜底: 20s 还没 load 就强制隐藏
+    setTimeout(() => {
+      if (document.getElementById('loading-overlay').classList.contains('active')) {
+        hideLoading();
+      }
+    }, 20000);
+  });
+}
+
+// ========================================
+// 里程碑 (机制 4)
+// ========================================
+function showToast(text, dur=4000) {
+  const t = document.getElementById('milestone-toast');
+  t.textContent = text;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function showFullscreen(text, dur=2500) {
+  const fs = document.getElementById('fullscreen-msg');
+  fs.innerHTML = `<div>${text}</div>`;
+  fs.classList.add('show');
+  return new Promise(resolve => setTimeout(() => { fs.classList.remove('show'); resolve(); }, dur));
+}
+
+const SPECIAL_LEVEL_FUN = `<!DOCTYPE html><html><head>
+<style>
+body{background:#f5e6c8;color:#3a1a1a;font-family:'et-book','Palatino','Georgia',serif;padding:50px 80px;margin:0;line-height:1.8;}
+h1{font-size:26px;font-weight:normal;font-style:italic;margin-bottom:14px;border-bottom:1px solid #c9a86a;padding-bottom:8px;}
+.classified{color:#a00;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;margin-bottom:20px;}
+.entry{margin:18px 0;font-size:15px;}
+.entry strong{font-style:italic;}
+.scribble{position:absolute;font-family:'Comic Sans MS',cursive;color:#a00;transform:rotate(-3deg);font-size:14px;}
+.exit{position:fixed;bottom:30px;right:40px;color:#a00;font-style:italic;cursor:pointer;text-decoration:underline;}
+.exit:hover{color:#000;}
+</style></head><body>
+<h1>Level Fun · 后室档案 No.47</h1>
+<div class="classified">[CLASSIFIED · UNREDACTED · 你不应该读到这里]</div>
+<p class="entry"><strong>定义:</strong> Level Fun 是一个充满派对装饰的层. 表面上每个房间都在庆祝某件事, 但<u>没有人确切记得在庆祝什么</u>.</p>
+<p class="entry"><strong>实体:</strong> "派对客人". 它们没有脸. 它们会邀请你加入. <strong style="color:#a00">不要接受邀请.</strong></p>
+<p class="entry"><strong>出口:</strong> 当蜡烛全部熄灭时, 一扇门会出现. 但你必须在熄灭之前找到它.</p>
+<p class="entry" style="color:#666">[关于本档案的进一步段落已被删除]</p>
+<p style="margin-top:30px;color:#a00;font-family:monospace;font-size:11px;">你已经走了 47 扇门. 这一扇是给你的奖励. 也是警告.</p>
+<div class="scribble" style="top:60px;right:50px;">不要回头</div>
+<div class="exit" data-door>[继续走 → 第 48 扇门]</div>
+<script>function _door(e){if(e)e.preventDefault();window.parent.postMessage({type:"nextDoor"},"*");}document.querySelectorAll("[data-door]").forEach(function(el){el.style.cursor="pointer";el.addEventListener("click",_door);});<\/script>
+</body></html>`;
+
+function triggerMilestone(count) {
+  if (count === 7) {
+    showToast('你已经走了 7 步. 还没到一半.');
+  } else if (count === 17) {
+    showToast('17 · 有什么声音很小, 像是有人在哭');
+  } else if (count === 47) {
+    // 强制进入 Level Fun
+    return 'level-fun';
+  } else if (count === 100) {
+    return 'recorded';
+  } else if (count === 23) {
+    showToast('23 · 上一个访问者是 2009 年的');
+  }
+  return null;
+}
+
+// ========================================
+// 不能停 (机制 6, 10s 触发)
+// ========================================
+const IDLE_THRESHOLD_START = 10; // 秒
+const IDLE_THRESHOLD_WARN = 14;
+const IDLE_THRESHOLD_FORCE = 18;
+let lastInteraction = Date.now();
+let idleTimer = null;
+let heartbeatTimer = null;
+
+function markInteraction() {
+  lastInteraction = Date.now();
+}
+
+function tickIdle() {
+  const idle = (Date.now() - lastInteraction) / 1000;
+  document.getElementById('idle-secs').textContent = Math.floor(idle);
+  const rv = document.getElementById('red-vignette');
+  const warn = document.getElementById('idle-warning');
+
+  if (idle < IDLE_THRESHOLD_START) {
+    rv.style.setProperty('--rv-intensity', '0');
+    warn.classList.remove('show');
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  } else if (idle < IDLE_THRESHOLD_WARN) {
+    const intensity = (idle - IDLE_THRESHOLD_START) / (IDLE_THRESHOLD_WARN - IDLE_THRESHOLD_START) * 0.5;
+    rv.style.setProperty('--rv-intensity', intensity);
+    warn.classList.remove('show');
+  } else if (idle < IDLE_THRESHOLD_FORCE) {
+    const intensity = 0.5 + (idle - IDLE_THRESHOLD_WARN) / (IDLE_THRESHOLD_FORCE - IDLE_THRESHOLD_WARN) * 0.5;
+    rv.style.setProperty('--rv-intensity', intensity);
+    warn.classList.add('show');
+    document.getElementById('idle-countdown').textContent = Math.ceil(IDLE_THRESHOLD_FORCE - idle);
+    if (!heartbeatTimer) {
+      heartbeatTimer = setInterval(playHeartbeat, 700);
+    }
+  } else {
+    // 强制开门
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    rv.style.setProperty('--rv-intensity', '0');
+    warn.classList.remove('show');
+    markInteraction();
+    requestDoor();
+  }
+}
+
+// 监听用户输入
+['mousemove','keydown','click','touchstart','scroll'].forEach(ev => {
+  window.addEventListener(ev, markInteraction, { passive: true });
+});
+
+// ========================================
+// 主流程: 拟态门 / 故障 / 走廊 / 里程碑
+// ========================================
+let inTransition = false;
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'nextDoor') requestDoor();
+});
+
+// 全局 ESC 兜底 (iframe 里的 ESC 走 postMessage, 这里是 outer 范围的 ESC)
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    requestDoor();
+  }
+});
+
+async function requestDoor() {
+  if (inTransition) return;
+  inTransition = true;
+  markInteraction();
+
+  // 1) 故障转场 (0.5-2s)
+  const transDur = 500 + Math.random() * 1500;
+  playGlitchSound(transDur);
+  await showTransition(transDur);
+
+  // 2) 计数 + 里程碑判定
+  const state = getState();
+  state.count = (state.count || 0) + 1;
+  const milestone = triggerMilestone(state.count);
+
+  if (milestone === 'level-fun') {
+    // 强制 Level Fun 房间
+    state.currentShell = 'level-fun';
+    state.currentUrl = '后室档案 No.47 · Level Fun';
+    saveState(state);
+    document.getElementById('stage-content').innerHTML = `<iframe id="stage-frame" srcdoc="${SPECIAL_LEVEL_FUN.replace(/"/g,'&quot;')}"></iframe>`;
+    refreshUI();
+    inTransition = false;
+    return;
+  }
+  if (milestone === 'recorded') {
+    await showFullscreen('你 · 被 · 记 录 · 了', 3000);
+  }
+
+  // 3) 走廊转场 10% 概率
+  if (Math.random() < 0.1) {
+    const corrDur = 3000 + Math.random() * 2000;
+    await showCorridor(corrDur);
+  }
+
+  // 4) 抽外壳 (规则随机: 邻接 + 深度 + 集群粘着)
+  const prevShell = state.currentShell;
+  const prevCluster = SHELL_TO_CLUSTER[prevShell];
+  const stayCount = (state.clusterStayCount != null && prevCluster === state.lastCluster) ? state.clusterStayCount : 0;
+
+  const nextShellId = pickNextShell(prevShell, state.count, state.lastCluster, stayCount);
+  const shell = SHELLS.find(s => s.id === nextShellId);
+
+  // v3.2: 先 showLoading (空 URL), 探测过程实时更新文本
+  showLoading(shell ? shell.name : nextShellId, '试探中...');
+
+  // 探测 URL 可达 (最多 3 次, 失败的 URL 进 session 黑名单)
+  const url = await pickValidUrlForShell(nextShellId, (attempt, tryingUrl) => {
+    const meta = document.getElementById('loading-meta');
+    if (meta) {
+      const su = tryingUrl.length > 50 ? tryingUrl.substring(0,48) + '…' : tryingUrl;
+      meta.innerHTML = `<strong style="color:var(--accent)">${shell ? shell.name : nextShellId}</strong><br>试探第 ${attempt} 扇 · ${su}`;
+    }
+  });
+
+  // 找到可达 URL, 更新 meta 显示真实目标
+  const finalMeta = document.getElementById('loading-meta');
+  if (finalMeta) {
+    const su = url.length > 60 ? url.substring(0,58) + '…' : url;
+    finalMeta.innerHTML = `<strong style="color:var(--accent)">${shell ? shell.name : nextShellId}</strong><br>${su}`;
+  }
+
+  const html = renderShell(nextShellId, url);
+  document.getElementById('stage-content').innerHTML = `<iframe id="stage-frame" srcdoc="${html.replace(/"/g, '&quot;')}"></iframe>`;
+  attachIframeLoad();
+
+  // 更新集群粘着状态
+  const newCluster = SHELL_TO_CLUSTER[nextShellId];
+  if (newCluster === state.lastCluster) {
+    state.clusterStayCount = stayCount + 1;
+  } else {
+    state.clusterStayCount = 1;
+    state.lastCluster = newCluster;
+  }
+
+  if (!state.visited.includes(nextShellId)) state.visited.push(nextShellId);
+  state.currentShell = nextShellId;
+  state.currentUrl = url;
+
+  // v3: 记录类型 + 时间线
+  const currentType = URL_TO_TYPE[url] || 'silly';
+  state.currentType = currentType;
+  if (!state.typeHistory) state.typeHistory = [];
+  state.typeHistory.push(currentType);
+  if (state.typeHistory.length > 12) state.typeHistory.shift();
+
+  saveState(state);
+
+  refreshUI();
+  inTransition = false;
+}
+
+function refreshUI() {
+  const state = getState();
+  document.getElementById('counter').textContent = state.count || 0;
+  const curShell = SHELLS.find(s => s.id === state.currentShell);
+  document.getElementById('shell-name').textContent = state.currentShell === 'level-fun' ? '⚠ Level Fun (No.47)' : (curShell ? curShell.name : '—');
+  document.getElementById('url-display').textContent = state.currentUrl || '—';
+
+  // v2 新增: 深度档 + 集群
+  const tier = depthTierOf(state.count || 0);
+  const TIER_LABEL = ['0 (入口)', '1 (混合)', '2 (开始脏)', '3 (深处)'];
+  document.getElementById('depth-tier').textContent = TIER_LABEL[tier] || tier;
+  const clusterName = state.lastCluster || '—';
+  const stayCount = state.clusterStayCount || 0;
+  const CLUSTER_LABEL = { windows:'Windows', browser:'浏览器', mac:'Mac', terminal:'终端', mobile:'移动', game:'8-bit' };
+  document.getElementById('cluster-name').textContent = clusterName === '—' ? '—' : `${CLUSTER_LABEL[clusterName] || clusterName} (粘${stayCount})`;
+
+  const ul = document.getElementById('shell-list');
+  ul.innerHTML = '';
+  SHELLS.forEach(s => {
+    const li = document.createElement('li');
+    li.textContent = s.name;
+    if (s.id === state.currentShell) li.classList.add('current');
+    else if ((state.visited || []).includes(s.id)) li.classList.add('visited');
+    ul.appendChild(li);
+  });
+
+  // v3: 当前类型 (信息栏)
+  const typeName = document.getElementById('type-name');
+  const curType = state.currentType;
+  if (curType && TYPE_LABELS[curType]) {
+    const lbl = TYPE_LABELS[curType];
+    typeName.textContent = lbl.name;
+    typeName.style.background = getComputedStyle(document.documentElement).getPropertyValue('--t-' + lbl.cls).trim();
+  } else {
+    typeName.textContent = '—';
+    typeName.style.background = '';
+  }
+
+  // v3: 类型时间线 (顶部 12 色块)
+  const pills = document.getElementById('timeline-pills');
+  pills.innerHTML = '';
+  const hist = state.typeHistory || [];
+  // 显示最近 12 个, 不足 12 用 empty 占位 (左侧)
+  for (let i = 0; i < 12; i++) {
+    const idx = hist.length - 12 + i;
+    const t = idx >= 0 ? hist[idx] : null;
+    const pill = document.createElement('div');
+    pill.className = 't-pill ' + (t ? TYPE_LABELS[t].cls : 'empty');
+    if (i === 11 && hist.length > 0) pill.classList.add('current');
+    pill.textContent = t ? TYPE_LABELS[t].shortChar : '·';
+    pills.appendChild(pill);
+  }
+}
+
+function resetAll() {
+  if (!confirm('清空进度? 不可恢复.')) return;
+  localStorage.removeItem(STORE);
+  document.getElementById('stage-content').innerHTML = '<div class="placeholder-msg">点 任 何 一 扇 门</div>';
+  refreshUI();
+}
+
+refreshUI();
+setInterval(tickIdle, 200);
+</script>
+
+</body>
+</html>
