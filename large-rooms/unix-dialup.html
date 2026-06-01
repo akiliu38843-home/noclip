@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>shell.umich.edu · 03:47 AM · Sun4/110 SunOS 4.1.3</title>
+<style>
+/* ============================================================
+   UNIX 拨号 shell · 1995 大学 SunOS · 大房间
+   骨架: 绿磷字真终端 (类 BBS 但更"严肃")
+   引擎: jquery.terminal (jcubic) MIT · CDN
+   vibe: 凌晨拨进某大学 guest 账户, finger 看谁在线
+============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: #050505;
+  color: #c0e0a0;
+  font-family: 'WebVGA', 'PxPlus IBM VGA8', 'Px437 IBM VGA', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Int10h IBM VGA 字体 (CC-BY-SA 4.0, 跟 IF 房同源) */
+@font-face {
+  font-family: 'WebVGA';
+  src: url('../fonts/IBM_VGA8x16.woff') format('woff');
+  font-display: block;
+}
+
+/* CRT 扫描线 + 微弯 vignette */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,255,80,0.025) 2px, rgba(0,255,80,0.025) 3px),
+    radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.45) 100%);
+  z-index: 998;
+  mix-blend-mode: multiply;
+}
+
+/* 终端容器 (jquery.terminal 会接管 #term) */
+#term {
+  padding: 20px;
+  min-height: 100vh;
+  color: #c0e0a0;
+  background: transparent;
+}
+
+/* jquery.terminal 内部样式覆盖 */
+.terminal,
+.terminal .terminal-output,
+.terminal .cmd {
+  background: transparent !important;
+  color: #c0e0a0 !important;
+  font-family: 'WebVGA', 'PxPlus IBM VGA8', 'Px437 IBM VGA', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+}
+.terminal .cmd-prompt,
+.terminal .cmd-cursor {
+  color: #ffd040 !important;
+}
+.terminal .cmd-cursor.terminal-blink-cursor::before { content: '_'; }
+.terminal a { color: #80c0ff !important; }
+.terminal .error, .terminal .red { color: #ff5050 !important; }
+.terminal .green { color: #5dd39e !important; }
+.terminal .yellow { color: #ffd040 !important; }
+.terminal .cyan { color: #80c0ff !important; }
+.terminal .dim { color: #608060 !important; }
+.terminal .player { color: #80c0ff !important; }
+
+/* 状态栏 */
+.statusbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #050505;
+  border-top: 1px solid #2a5a3a;
+  color: #c0e0a0;
+  font-size: 11px;
+  padding: 4px 14px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 100;
+  font-family: inherit;
+}
+.statusbar .right { display: flex; gap: 14px; }
+
+/* 退出 */
+.exit-hint {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: #050505;
+  border: 1px solid #2a5a3a;
+  color: #c0e0a0;
+  font: 11px inherit;
+  padding: 4px 10px;
+  cursor: pointer;
+  z-index: 101;
+  font-family: inherit;
+}
+.exit-hint:hover { background: #c0e0a0; color: #050505; }
+
+@media (max-width: 720px) {
+  html { font-size: 12px; }
+  #term { padding: 10px 10px 60px; }
+}
+</style>
+</head>
+<body>
+
+<button class="exit-hint" onclick="exitRoom()" title="^D · exit shell">[logout]</button>
+
+<div id="term"></div>
+
+<div class="statusbar">
+  <span>~ shell.umich.edu · Sun4/110 · SunOS 4.1.3 ~</span>
+  <div class="right">
+    <span id="user-info">guest@tty04</span>
+    <span id="online-time">03:47 AM EST</span>
+  </div>
+</div>
+
+<!-- jQuery + jquery.terminal CDN -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery.terminal@2.43.1/js/jquery.terminal.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/jquery.terminal@2.43.1/css/jquery.terminal.min.css" rel="stylesheet"/>
+
+<script>
+// ============================================================
+// 虚拟用户 (8 个) · 每人有 .plan 文件
+// ============================================================
+const USERS = {
+  'mwilson': {
+    real: 'Michael Wilson', dept: 'Computer Science · grad student',
+    login: 'tty12', idle: '0:23',
+    where: 'Angell Hall · CS-208',
+    plan: [
+      "Working on thesis. Defense scheduled May 18th.",
+      "If you're reading this past midnight, you're as fucked as me.",
+      "",
+      "Currently obsessed with:",
+      "  - SmallTalk-80 implementation",
+      "  - Why does 'finger' need to exist when I'm clearly trying",
+      "    to be alone right now",
+      "  - Whether Bonzo Dog Doo-Dah Band is actually any good",
+      "",
+      "Reach me: mwilson@umich.edu (don't, please)",
+    ]
+  },
+  'jchen': {
+    real: 'Jenny Chen', dept: 'EE · undergrad TA',
+    login: 'pts/3', idle: '4:17',
+    where: 'home (PPP dialup, 14.4)',
+    plan: [
+      "TA office hours: TR 2-4pm, EECS lab 1227",
+      "If you're a 270 student emailing me at 4am the night before",
+      "the exam, the answer is no.",
+      "",
+      "fav albums of 1994: Weezer (Blue) · Hole · Beck Mellow Gold",
+    ]
+  },
+  'kpryor': {
+    real: 'Kevin Pryor', dept: 'Sysadmin · LSA IT',
+    login: 'console', idle: '<2 hr>',
+    where: 'NOC · room 1018',
+    plan: [
+      "If the system is on fire please reboot it yourself.",
+      "I will be at the bar.",
+      "",
+      "Tip: when the alert pager goes off at 3am, the answer is",
+      "almost always 'sendmail loop in /var/spool/mqueue'.",
+      "",
+      "Real emergencies: kpryor@umich.edu or 313-555-0192",
+    ]
+  },
+  'lscott': {
+    real: 'Linda Scott', dept: 'English Literature · faculty',
+    login: 'tty08', idle: '6:42',
+    where: 'Hatcher Library carrel #114',
+    plan: [
+      "Office hours: by appointment only.",
+      "",
+      "Currently re-reading Wuthering Heights for the 41st time.",
+      "Each time it gets worse. I can't stop.",
+      "",
+      "Email lscott@umich.edu or leave a note in box 88",
+    ]
+  },
+  'root': {
+    real: 'System Administrator', dept: 'uid=0',
+    login: 'console', idle: '12:48',
+    where: 'machine room',
+    plan: [
+      "DO NOT EMAIL ROOT.",
+      "",
+      "If you are reading this, you have too much time on your hands.",
+      "",
+      "    Please go to bed.",
+      "                                    -- the management",
+    ]
+  },
+  'jdoe': {
+    real: 'John Doe', dept: 'guest · placeholder account',
+    login: '(not logged in)', idle: 'N/A',
+    where: '(never)',
+    plan: ["No plan."]
+  },
+  'tcooper': {
+    real: 'Tom Cooper', dept: 'Astronomy · postdoc',
+    login: 'tty15', idle: '0:08',
+    where: 'Dennison Hall · obs deck',
+    plan: [
+      "Watching the sky. Don't bother me.",
+      "",
+      "Currently observing: V404 Cyg (X-ray transient)",
+      "",
+      "If you can read this, you're missing the meteor shower.",
+      "Go outside. Lights off. Wait 15 minutes for dark adaptation.",
+    ]
+  },
+  'aharper': {
+    real: 'Alex Harper', dept: 'unknown · last login Mar 1993',
+    login: '(not logged in for 791 days)', idle: 'N/A',
+    where: '???',
+    plan: [
+      "I quit.",
+      "",
+      "If anyone finds this, please tell my mother I'm okay.",
+      "",
+      "                                    -- a.h.",
+      "                                    1993-03-04",
+    ]
+  }
+};
+
+// ============================================================
+// 虚拟文件系统
+// ============================================================
+const FS = {
+  '/': {
+    type: 'dir', children: ['etc', 'home', 'tmp', 'usr', 'var']
+  },
+  '/etc': {
+    type: 'dir', children: ['motd', 'passwd', 'hosts']
+  },
+  '/etc/motd': {
+    type: 'file', content: [
+      "+--------------------------------------------------------------+",
+      "|   University of Michigan · Computer Aided Engineering Net    |",
+      "|   shell.umich.edu · Sun4/110 SunOS Release 4.1.3 (1994-08)   |",
+      "+--------------------------------------------------------------+",
+      "",
+      "  Unauthorized access is prohibited and may be prosecuted.",
+      "  Disk quota: 50MB per user. Mail quota: 10MB.",
+      "",
+      "  Scheduled maintenance: Sun May 14, 02:00-04:00 EST.",
+      "  ITDIV announcements: see /var/news/",
+      "",
+      "  >>> Please remove .core files from your home directory. <<<",
+      "      Your friendly sysadmin,",
+      "      kpryor",
+      "",
+    ]
+  },
+  '/etc/passwd': {
+    type: 'file', content: [
+      "root:x:0:0:System Administrator:/root:/bin/csh",
+      "daemon:x:1:1::/etc:",
+      "bin:x:3:3::/bin:",
+      "uucp:x:4:8::/var/spool/uucppublic:",
+      "news:x:6:6::/var/spool/news:/bin/csh",
+      "guest:x:7:8:Guest User:/home/guest:/bin/csh",
+      "mwilson:x:1043:100:Michael Wilson:/home/mwilson:/bin/tcsh",
+      "jchen:x:1067:100:Jenny Chen:/home/jchen:/bin/csh",
+      "kpryor:x:0:0:Kevin Pryor (root):/home/kpryor:/bin/zsh",
+      "lscott:x:1102:101:Linda Scott:/home/lscott:/bin/csh",
+      "tcooper:x:1119:100:Tom Cooper:/home/tcooper:/bin/csh",
+      "aharper:x:1058:100:Alex Harper:/home/aharper:/bin/csh",
+      "jdoe:x:9999:9999:John Doe:/dev/null:/bin/false",
+    ]
+  },
+  '/etc/hosts': {
+    type: 'file', content: [
+      "127.0.0.1       localhost",
+      "141.211.144.5   shell.umich.edu     shell",
+      "141.211.144.6   mailgate.umich.edu  mail",
+      "141.211.144.10  newsgate.umich.edu  news",
+      "141.211.4.4     terminator.cc.umich.edu",
+      "144.220.6.5     archive.cs.umich.edu",
+      "",
+      "# added by kpryor 1994-07-12",
+      "192.41.193.140  rs.internic.net",
+      "",
+    ]
+  },
+  '/home': {
+    type: 'dir', children: ['guest', 'mwilson', 'jchen', 'kpryor', 'lscott', 'tcooper', 'aharper']
+  },
+  '/home/guest': {
+    type: 'dir', children: ['README', '.plan']
+  },
+  '/home/guest/README': {
+    type: 'file', content: [
+      "Welcome, guest.",
+      "",
+      "This is a shared guest account. Please do not use for serious",
+      "work or to store personal files.",
+      "",
+      "Useful commands:",
+      "  finger <user>    -- info on a user",
+      "  who              -- who's logged in",
+      "  ls /home         -- list users",
+      "  cat /etc/motd    -- system bulletin",
+      "  mail             -- read mail",
+      "  help             -- list available commands",
+      "",
+      "Connection will be terminated after 30 minutes of inactivity.",
+    ]
+  },
+  '/home/guest/.plan': { type: 'file', content: ['(empty)'] },
+  '/tmp': { type: 'dir', children: [] },
+  '/usr': { type: 'dir', children: ['games', 'man'] },
+  '/usr/games': { type: 'dir', children: ['adventure', 'fortune', 'rogue'] },
+  '/usr/games/adventure': { type: 'file', content: ['# binary executable. Try: /usr/games/adventure'] },
+  '/usr/man': { type: 'dir', children: [] },
+  '/var': { type: 'dir', children: ['log', 'news', 'mail'] },
+  '/var/log': { type: 'dir', children: ['messages', 'wtmp'] },
+  '/var/log/messages': {
+    type: 'file', content: [
+      "May 12 02:14:31 shell kernel: NFS server archive.cs.umich.edu not responding, retrying",
+      "May 12 02:18:42 shell kernel: NFS server archive.cs.umich.edu OK",
+      "May 12 02:43:11 shell sendmail[6041]: HAA06041: from=<...>, ruleset=check_rcpt, arg1=<...>, relay=...",
+      "May 12 02:47:03 shell login: ROOT LOGIN ON ttyp0 BY kpryor",
+      "May 12 02:51:30 shell shutdown: (none) - shutdown requested",
+      "May 12 02:51:31 shell shutdown: ABORTED (no operator)",
+      "May 12 03:14:19 shell login: 1 LOGIN FAILURE FROM 141.211.144.10",
+      "May 12 03:14:21 shell login: 1 LOGIN FAILURE FROM 141.211.144.10",
+      "May 12 03:14:22 shell login: ROOT LOGIN ON ttyp1",
+      "May 12 03:14:55 shell login: ROOT LOGOUT ON ttyp1",
+      "May 12 03:47:00 shell login: guest@ttyp4",
+    ]
+  },
+  '/var/log/wtmp': { type: 'file', content: ['# binary file (last login records)'] },
+  '/var/mail': { type: 'dir', children: ['guest'] },
+  '/var/mail/guest': {
+    type: 'file', content: [
+      "From kpryor@umich.edu Wed May 10 14:22 EST 1995",
+      "Date: Wed, 10 May 1995 14:22:31 -0500 (EST)",
+      "From: Kevin Pryor <kpryor@umich.edu>",
+      "To: guest@umich.edu",
+      "Subject: shared account etiquette",
+      "",
+      "Hi whoever-you-are,",
+      "",
+      "Please don't leave the terminal logged in when you walk away.",
+      "The guest account is shared. Last user left it logged in for",
+      "11 hours and someone ran 'crashme' on the production box.",
+      "",
+      "Thanks,",
+      "-kpryor",
+      "",
+      "From mwilson@umich.edu Fri May 12 03:11 EST 1995",
+      "Date: Fri, 12 May 1995 03:11:08 -0500 (EST)",
+      "From: Michael Wilson <mwilson@umich.edu>",
+      "To: guest@umich.edu",
+      "Subject: are you the one fingering me at 3am",
+      "",
+      "stop it",
+      "",
+      "(sent from terminal session, 0:00 idle)",
+      "",
+    ]
+  },
+  '/var/news': { type: 'dir', children: [] },
+};
+// Generate home dirs from USERS
+Object.keys(USERS).forEach(u => {
+  if (u === 'jdoe' || u === 'aharper') return;  // 不在线的不创目录
+  FS[`/home/${u}`] = { type: 'dir', children: ['.plan'] };
+  FS[`/home/${u}/.plan`] = { type: 'file', content: USERS[u].plan };
+});
+FS['/home/aharper'] = { type: 'dir', children: ['.plan', '.signature.old'] };
+FS['/home/aharper/.plan'] = { type: 'file', content: USERS.aharper.plan };
+FS['/home/aharper/.signature.old'] = {
+  type: 'file',
+  content: [
+    "  Alex Harper · aharper@umich.edu",
+    "  CS / EECS · room 2247",
+    "  -- there is no signal here --",
+  ]
+};
+
+// ============================================================
+// 命令实现
+// ============================================================
+let cwd = '/home/guest';
+const HANDLE = 'guest' + Math.floor(Math.random() * 9000 + 1000);
+
+function resolvePath(p) {
+  if (!p || p === '.') return cwd;
+  if (p === '~') return '/home/guest';
+  if (p.startsWith('~/')) return '/home/guest/' + p.slice(2);
+  if (p.startsWith('/')) return p.replace(/\/+$/, '') || '/';
+  // relative
+  const parts = cwd.split('/').filter(Boolean);
+  p.split('/').forEach(seg => {
+    if (seg === '..') parts.pop();
+    else if (seg && seg !== '.') parts.push(seg);
+  });
+  return '/' + parts.join('/');
+}
+
+function fsGet(path) {
+  return FS[path] || FS[path.replace(/\/+$/, '') || '/'];
+}
+
+const COMMANDS = {
+  help() {
+    return [
+      "Available commands:",
+      "  ls [path]         list directory",
+      "  cd [path]         change directory",
+      "  pwd               print working directory",
+      "  cat <file>        display file",
+      "  finger <user>     show user info + .plan",
+      "  who               who's currently logged in",
+      "  w                 same as who, more verbose",
+      "  whoami            your handle",
+      "  last [user]       login history",
+      "  date              current date/time",
+      "  ps                process list",
+      "  mail              read mail",
+      "  echo <text>       echo text",
+      "  uname [-a]        system info",
+      "  exit · logout · ^D   leave shell",
+      "",
+      "Hint: try `finger mwilson`, `ls /home`, `cat /var/log/messages`",
+    ].join('\n');
+  },
+  ls(args) {
+    const path = resolvePath(args[0] || cwd);
+    const node = fsGet(path);
+    if (!node) return `ls: ${args[0] || path}: No such file or directory`;
+    if (node.type !== 'dir') return path.split('/').pop();
+    const children = (node.children || []).sort();
+    // 简化: 不显示 . .. 等; .开头条目仅 ls -a 时显示
+    const hidden = children.filter(c => c.startsWith('.'));
+    const visible = children.filter(c => !c.startsWith('.'));
+    if (args[0] === '-a' || args.includes('-a')) {
+      return ['.', '..'].concat(hidden, visible).join('  ');
+    }
+    return visible.join('  ');
+  },
+  cd(args) {
+    const path = resolvePath(args[0] || '/home/guest');
+    const node = fsGet(path);
+    if (!node) return `cd: ${path}: No such file or directory`;
+    if (node.type !== 'dir') return `cd: ${path}: Not a directory`;
+    cwd = path;
+    return '';
+  },
+  pwd() { return cwd; },
+  cat(args) {
+    if (!args[0]) return 'usage: cat <file>';
+    const path = resolvePath(args[0]);
+    const node = fsGet(path);
+    if (!node) return `cat: ${args[0]}: No such file or directory`;
+    if (node.type !== 'file') return `cat: ${args[0]}: Is a directory`;
+    return node.content.join('\n');
+  },
+  finger(args) {
+    if (!args[0]) {
+      // finger 无参数 = who 信息更详细
+      const lines = ['Login    Name              TTY  Idle    When         Where'];
+      for (const [u, info] of Object.entries(USERS)) {
+        if (info.login.includes('not logged')) continue;
+        lines.push(
+          `${u.padEnd(8)} ${info.real.padEnd(17)} ${info.login.split('/').pop().padEnd(4)} ${info.idle.padEnd(7)} (now)        ${info.where}`
+        );
+      }
+      return lines.join('\n');
+    }
+    const u = USERS[args[0].toLowerCase()];
+    if (!u) return `finger: ${args[0]}: no such user.`;
+    const lines = [
+      `Login: ${args[0]}                  Name: ${u.real}`,
+      `Directory: /home/${args[0]}        Shell: /bin/csh`,
+    ];
+    if (u.login.includes('not logged')) {
+      lines.push(`Never logged in.`, `Last seen: ${u.login.match(/\d+/)?.[0] || 'unknown'} days ago`);
+    } else {
+      lines.push(`On since ${u.idle.includes(':') ? '(today)' : 'recently'} on ${u.login} from ${u.where}`);
+      lines.push(`Idle: ${u.idle}`);
+    }
+    lines.push(`Plan:`);
+    u.plan.forEach(p => lines.push(p));
+    return lines.join('\n');
+  },
+  who() {
+    const lines = [];
+    for (const [u, info] of Object.entries(USERS)) {
+      if (info.login.includes('not logged')) continue;
+      lines.push(`${u.padEnd(10)} ${info.login.padEnd(8)} May 12 ${(Math.random()*24).toFixed(0).padStart(2,'0')}:${(Math.random()*60).toFixed(0).padStart(2,'0')}`);
+    }
+    lines.push(`${HANDLE.padEnd(10)} ttyp4    May 12 03:47`);
+    return lines.join('\n');
+  },
+  w() {
+    return [
+      ' 3:47am  up 47 days, 13:22,  ' + (Object.keys(USERS).filter(u => !USERS[u].login.includes('not logged')).length + 1) + ' users,  load average: 0.04, 0.07, 0.08',
+      'User      tty   login@   idle   JCPU   PCPU  what',
+      ...Object.entries(USERS).filter(([_, i]) => !i.login.includes('not logged')).map(([u, info]) =>
+        `${u.padEnd(9)} ${info.login.split('/').pop().padEnd(6)} ${(Math.random()*24).toFixed(0)}:${(Math.random()*60).toFixed(0).padStart(2,'0')}   ${info.idle.padEnd(6)} 0:01    0:01  ${['emacs','elm','rn','-csh','vi'][Math.floor(Math.random()*5)]}`
+      ),
+      `${HANDLE.padEnd(9)} ttyp4  3:47am   0:00    0:00    0:00  -csh`,
+    ].join('\n');
+  },
+  whoami() { return HANDLE; },
+  last(args) {
+    const user = args[0] || '';
+    const entries = [
+      [HANDLE, 'ttyp4', '141.211.144.5', 'Fri May 12 03:47   still logged in'],
+      ['guest', 'ttyp7', 'dialup21.um.edu', 'Thu May 11 21:14 - 23:08 (01:54)'],
+      ['guest', 'ttyp2', 'dialup8.um.edu',  'Thu May 11 14:22 - 14:25 (00:03)'],
+      ['kpryor', 'console', '-', 'Thu May 11 09:00 - 18:30 (09:30)'],
+      ['aharper', 'ttyp3', 'mac.eng.um.edu', 'Mon Mar 04 22:18 - 22:19 (00:01)  1993'],
+      ['guest', 'ttyp1', 'dialup1.um.edu',  'Mon May 08 02:14 - 02:33 (00:19)'],
+    ];
+    const filtered = user ? entries.filter(e => e[0] === user) : entries;
+    return filtered.map(e => `${e[0].padEnd(10)} ${e[1].padEnd(8)} ${e[2].padEnd(20)} ${e[3]}`).join('\n');
+  },
+  date() {
+    return 'Fri May 12 03:47:' + String(Math.floor(Math.random()*60)).padStart(2,'0') + ' EST 1995';
+  },
+  ps(args) {
+    const lines = [
+      '  PID TT  STAT TIME COMMAND',
+      '   1 ?   IW   0:14 /sbin/init',
+      '  47 ?   S    0:02 /usr/lib/sendmail -bd -q15m',
+      '  89 ?   IW   0:00 in.fingerd',
+      ' 412 p4  S    0:00 -csh',
+      ' 419 p4  R    0:00 ps' + (args.includes('-aux') || args.includes('aux') ? ' -aux' : ''),
+    ];
+    if (args.includes('-aux') || args.includes('aux')) {
+      return [
+        'USER     PID %CPU %MEM   VSZ  RSS TT  STAT TIME COMMAND',
+        'root       1  0.0  0.2   528  236 ?   IW   0:14 /sbin/init',
+        'root      47  0.0  0.5   840  500 ?   S    0:02 /usr/lib/sendmail',
+        'mwilson  217  0.1  1.8  3120 1872 12  S    0:14 emacs thesis.tex',
+        'jchen    288  0.0  0.6   876  600 p3  IW   0:00 -csh',
+        'kpryor   301  0.0  1.4  2040 1404 co  S    1:42 zsh',
+        'tcooper  377  0.0  0.5   840  500 15  IW   0:08 telnet',
+        'guest    412  0.0  0.5   840  500 p4  S    0:00 -csh',
+        'guest    419  0.0  0.1   220  100 p4  R    0:00 ps -aux',
+      ].join('\n');
+    }
+    return lines.join('\n');
+  },
+  mail() {
+    return COMMANDS.cat(['/var/mail/guest']);
+  },
+  echo(args) { return args.join(' '); },
+  uname(args) {
+    if (args.includes('-a')) return 'SunOS shell.umich.edu 4.1.3 1 sun4c';
+    return 'SunOS';
+  },
+  clear() { return '\x1b[2J'; },  // jquery.terminal 用 .clear()
+  motd() { return COMMANDS.cat(['/etc/motd']); },
+  exit() { exitRoom(); return ''; },
+  logout() { exitRoom(); return ''; },
+  // Easter eggs
+  rm(args) {
+    if (args.includes('-rf') && args.includes('/')) return 'rm: cannot remove `/`: I will not.';
+    return `rm: ${args[args.length-1] || '?'}: Permission denied`;
+  },
+  sudo() { return 'sudo: command not found (this is 1995, dummy. use /bin/su)'; },
+  curl() { return 'csh: curl: Command not found.'; },
+  wget() { return 'csh: wget: Command not found.'; },
+  git() { return 'csh: git: Command not found.'; },
+  vi() { return '~\n~\n~\n[New File]\n[press :q to escape but you can\'t]\n(just kidding, vi not implemented · type help)'; },
+  emacs() { return COMMANDS.vi(); },
+  fortune() {
+    const f = [
+      'You will be hungry again in one hour.',
+      "Do not believe everything you read on the net.",
+      'A long-forgotten loved one will appear soon.\nBuy the negatives at any price.',
+      "If you can read this you're too close.",
+      'The world is coming to an end!  Save your buffers!',
+    ];
+    return f[Math.floor(Math.random() * f.length)];
+  },
+};
+
+// ============================================================
+// 启动: login prompt → MOTD → shell
+// ============================================================
+const term = $('#term').terminal(function(line) {
+  const parts = line.trim().split(/\s+/);
+  const cmd = parts[0].toLowerCase();
+  const args = parts.slice(1);
+  if (!cmd) return;
+  if (COMMANDS[cmd]) {
+    const out = COMMANDS[cmd](args);
+    if (cmd === 'clear') { this.clear(); return; }
+    if (out) this.echo(out);
+  } else {
+    this.echo(`csh: ${cmd}: Command not found.`);
+  }
+}, {
+  greetings: false,
+  prompt: () => `<span class="green">${HANDLE}@shell</span>:<span class="cyan">${cwd}</span><span class="yellow">$</span> `,
+  exit: false,
+  history: true,
+  historySize: 100,
+  completion: function(s) {
+    const cmds = Object.keys(COMMANDS);
+    const node = fsGet(cwd);
+    const files = node && node.type === 'dir' ? (node.children || []) : [];
+    return cmds.concat(files);
+  },
+  onInit: async function() {
+    this.echo('+--------------------------------------------------------------+');
+    this.echo('|   University of Michigan · Computer Aided Engineering Net    |');
+    this.echo('|   shell.umich.edu · Sun4/110 SunOS Release 4.1.3 (1994-08)   |');
+    this.echo('+--------------------------------------------------------------+');
+    this.echo('');
+    await sleep(800);
+    this.echo('login: <span class="player">' + HANDLE + '</span>');
+    await sleep(300);
+    this.echo('Password: <span class="dim">(echo off)</span>');
+    await sleep(500);
+    this.echo('Last login: Thu May 11 21:14:33 from dialup21.um.edu', { raw: true });
+    this.echo('You have <span class="yellow">2</span> new mail. Type <span class="yellow">mail</span> to read.', { raw: true });
+    this.echo('');
+    this.echo(COMMANDS.motd());
+    this.echo('Type <span class="yellow">help</span> for a list of commands.', { raw: true });
+    this.echo('');
+  }
+});
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'unix-dialup' }, '*');
+  } else {
+    if (confirm('logout & disconnect?')) window.close();
+  }
+}
+
+// Ctrl-D = exit
+$(document).on('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); exitRoom(); }
+  if (e.key === 'Escape') exitRoom();
+});
+
+// 顶部状态时钟模拟
+let hh = 3, mm = 47;
+setInterval(() => {
+  mm = (mm + 1) % 60;
+  if (mm === 0) hh = (hh + 1) % 24;
+  document.getElementById('online-time').textContent =
+    String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0') + ' AM EST';
+}, 30000);  // 假时钟, 30 秒一分钟
+document.getElementById('user-info').textContent = HANDLE + '@tty04';
+</script>
+
+</body>
+</html>
