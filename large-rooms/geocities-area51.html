@@ -632,6 +632,7 @@ body::after {
 
 <div class="footer">
   <div>OBSERVERS THIS NIGHT: <span class="counter" id="counter">0000000</span></div>
+  <div style="margin-top:4px; font-size:10px; color:#4a7a5a; font-style:italic;">// 17 other visitors observed this dossier in the past 24h.</div>
   <div style="margin-top:6px;">
     <a class="guestbook" onclick="alert('// guestbook auto-purged 1999-12-31 (Y2K compliance)')">📓 view watcher log</a>
     <a class="guestbook" onclick="alert('// CHANNEL CLOSED · last operator: c.carter@1013.foxnet (404)')">📡 contact sysop</a>
@@ -713,7 +714,8 @@ function saveVisited() {
 
 function renderHouses() {
   const grid = document.getElementById('houses');
-  grid.innerHTML = HOUSES.map((h, i) => `
+  const dc = (window.NOCLIP && window.NOCLIP.doorCount) || 0;
+  grid.innerHTML = HOUSES.filter(h => !h._doorGate || dc >= h._doorGate).map((h, i) => `
     <div class="house ${visited.has(h.id) ? 'visited' : ''}" data-idx="${i}" onclick="openHouse(${i})" title="${h.topic}">
       <div class="house-icon">${h.icon}</div>
       <div class="house-id">${h.id}</div>
@@ -724,6 +726,16 @@ function renderHouses() {
 
 function openHouse(idx) {
   const h = HOUSES[idx];
+  // Sprint 3: 碎片 dossier 直接显 _body
+  if (h._body) {
+    currentHouse = h;
+    visited.add(h.id);
+    saveVisited();
+    document.getElementById('view-title').textContent = `▸ ${h.id} :: ${h.topic}`;
+    document.getElementById('view-content').innerHTML = '<div style="padding:30px;color:#ff8c00;font-family:monospace;line-height:1.8;white-space:pre-wrap;">' + h.topic + '\n\n' + h._body + '</div>';
+    renderHouses();
+    return;
+  }
   currentHouse = h;
   visited.add(h.id);
   saveVisited();
@@ -817,6 +829,8 @@ function tryCode() {
   if (specialMsg) {
     log.style.color = '#6affb0';
     log.textContent = specialMsg;
+    // Sprint 3: 把彩蛋密语写 localStorage, 跨房解锁
+    try { localStorage.setItem('noclip-unlock-' + raw.toLowerCase(), '1'); } catch(e) {}
   } else {
     log.style.color = '#ff8c00';
     log.textContent = `✓ TEMPORARY CLEARANCE · code "${raw}" logged · 24h pass`;

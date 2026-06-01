@@ -904,7 +904,71 @@ const PROPOSALS = [
   "end_date": "2021-05-03",
   "url": "https://snapshot.org/#/friendswithbenefits.eth/proposal/QmesG4qENC7CtAQRi5KAQbKucqRjPqGh8nJx4aR2G6mran"
  }
-];
+  ,
+ {
+  "id": "roswell-secret",
+  "dao_name": "ROSWELL PROJECT",
+  "dao_color": "#888",
+  "title": "Decentralize NORAD: 1947 mandate review",
+  "summary": "(unlocked via Area51 密语 ROSWELL) · 1947 NORAD 治理章程 链上化复审 · 国会拒绝, 提案匿名转 Snapshot · 投票截止前一周服务器停摆",
+  "status": "ended",
+  "choices": [
+    {"label": "Declassify", "score": 1947, "color": "#21c97a"},
+    {"label": "Keep sealed", "score": 1, "color": "#e74c3c"}
+  ],
+  "total_voters": 12,
+  "end_date": "1947-07-08 (?)",
+  "url": "about:blank",
+  "_unlockBy": "roswell"
+ },
+ {
+  "id": "majestic12-secret",
+  "dao_name": "MJ-12 GOVERNANCE",
+  "dao_color": "#888",
+  "title": "Operator clearance protocol · level λ",
+  "summary": "(unlocked via Area51 密语 MAJESTIC12) · 12 个 operator 投票决定下一步 · 全部弃权 · 提案进入永久搁置",
+  "status": "ended",
+  "choices": [
+    {"label": "Proceed", "score": 0, "color": "#21c97a"},
+    {"label": "Abstain", "score": 12, "color": "#888"}
+  ],
+  "total_voters": 12,
+  "end_date": "????-??-??",
+  "url": "about:blank",
+  "_unlockBy": "majestic12"
+ },
+ {
+  "id": "mulder-secret",
+  "dao_name": "I WANT TO BELIEVE DAO",
+  "dao_color": "#888",
+  "title": "X-Files DAO · Trust No One Bond Issuance",
+  "summary": "(unlocked via Area51 密语 MULDER) · 发行 1013 万 'TRUST' 代币给被认证的目击者 · 没人来认证",
+  "status": "ended",
+  "choices": [
+    {"label": "Mint", "score": 47, "color": "#21c97a"},
+    {"label": "Don\'t", "score": 99, "color": "#e74c3c"}
+  ],
+  "total_voters": 146,
+  "end_date": "2002-05-19 (X-Files 完结日)",
+  "url": "about:blank",
+  "_unlockBy": "mulder"
+ },
+ {
+  "id": "trustnoone-secret",
+  "dao_name": "TRUST NO ONE COLLECTIVE",
+  "dao_color": "#888",
+  "title": "Revoke all governance · self-terminate",
+  "summary": "(unlocked via Area51 密语 TRUSTNOONE) · 提案要求 DAO 自我解散并删除所有 multisig · 通过 99% · 但永远没人执行",
+  "status": "ended",
+  "choices": [
+    {"label": "Revoke + dissolve", "score": 9999, "color": "#21c97a"},
+    {"label": "Keep going", "score": 1, "color": "#e74c3c"}
+  ],
+  "total_voters": 1,
+  "end_date": "scheduled then forgotten",
+  "url": "about:blank",
+  "_unlockBy": "trustnoone"
+ }];
 
 const STORE = 'noclip-dao-v1';
 let currentIdx = -1;
@@ -926,8 +990,13 @@ function enterReadOnly() {
 
 function renderGrid() {
   const g = document.getElementById('grid');
-  g.innerHTML = PROPOSALS.map((p, i) => `
-    <div class="proposal-card ${visited.has(p.id) ? 'visited' : ''}" onclick="openProposal(${i})">
+  // Sprint 3: 过滤掉未解锁的隐藏提案
+  const visibleProps = PROPOSALS.filter(p => {
+    if (!p._unlockBy) return true;
+    return localStorage.getItem('noclip-unlock-' + p._unlockBy) === '1';
+  });
+  g.innerHTML = visibleProps.map((p, i) => `
+    <div class="proposal-card ${visited.has(p.id) ? 'visited' : ''}" onclick="openProposal(PROPOSALS.indexOf(visibleProps[${i}]))">
       <div class="card-head">
         <div class="dao-avatar" style="background: ${p.dao_color};">${p.dao_name[0]}</div>
         <div class="dao-name">${escHtml(p.dao_name)}</div>

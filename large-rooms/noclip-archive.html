@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NOCLIP · archive entry · subject log</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: #050505;
+  color: #c8c8c8;
+  font-family: 'WebVGA', 'PxPlus IBM VGA8', 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow: hidden;
+}
+@font-face {
+  font-family: 'WebVGA';
+  src: url('../fonts/IBM_VGA8x16.woff') format('woff');
+  font-display: block;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(200,200,200,0.025) 2px, rgba(200,200,200,0.025) 3px),
+    radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%);
+  z-index: 998;
+  mix-blend-mode: multiply;
+}
+.term {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 60px 24px 100px;
+  min-height: 100vh;
+}
+.screen { white-space: pre-wrap; word-wrap: break-word; }
+.screen .dim { color: rgba(255,255,255,0.4); }
+.screen .br { color: #fff; }
+.screen .red { color: #ff5555; }
+.screen .yel { color: #ffd040; }
+.screen .grn { color: #5dd39e; }
+.screen .player { color: #80c0ff; font-weight: bold; }
+.cursor {
+  display: inline-block; width: 8px; height: 14px;
+  background: #c8c8c8;
+  vertical-align: text-bottom;
+  animation: blink 0.8s steps(2,start) infinite;
+}
+@keyframes blink { to { opacity: 0; } }
+.statusbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #050505;
+  border-top: 1px solid #333;
+  padding: 6px 14px;
+  font-size: 11px;
+  color: #888;
+  display: flex;
+  justify-content: space-between;
+  font-family: inherit;
+  z-index: 100;
+}
+.exit-hint {
+  position: fixed; top: 10px; right: 10px;
+  background: #050505; border: 1px solid #333; color: #c8c8c8;
+  font: 11px inherit; padding: 4px 10px; cursor: pointer; z-index: 101;
+  font-family: inherit;
+}
+.exit-hint:hover { background: #c8c8c8; color: #050505; }
+.continue-hint {
+  margin-top: 30px;
+  color: #555;
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+}
+.continue-hint a {
+  color: #80c0ff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+</style>
+<!-- ============================================================
+     NOCLIP shared narrative helper · Sprint 1 (复用)
+============================================================ -->
+<script>
+(function(){
+  const LS = window.localStorage;
+  function getHandle() {
+    let h = LS.getItem('noclip-handle');
+    if (!h) {
+      h = 'guest_' + Math.floor(Math.random() * 9000 + 1000);
+      LS.setItem('noclip-handle', h);
+    }
+    return h;
+  }
+  function getDoorCount() { return parseInt(LS.getItem('noclip-door-count') || '1', 10); }
+  function getSessionStart() {
+    let s = LS.getItem('noclip-session-start');
+    if (!s) { s = Date.now().toString(); LS.setItem('noclip-session-start', s); }
+    return parseInt(s, 10);
+  }
+  function getNoclipTime() {
+    const sessionMin = (Date.now() - getSessionStart()) / 60000;
+    const doorMin = getDoorCount() * 4;
+    const totalMin = 3 * 60 + 14 + sessionMin + doorMin;
+    const h = Math.floor(totalMin / 60) % 24;
+    const m = Math.floor(totalMin) % 60;
+    return {
+      h: h, m: m,
+      ampm_str: ((h % 12) || 12) + ':' + String(m).padStart(2,'0') + ' ' + (h < 12 ? 'AM' : 'PM')
+    };
+  }
+  function logVisit(roomId) {
+    const key = 'noclip-visits-' + roomId;
+    const visits = JSON.parse(LS.getItem(key) || '[]');
+    visits.push(Date.now()); if (visits.length > 20) visits.shift();
+    LS.setItem(key, JSON.stringify(visits));
+  }
+  function getAllVisits() {
+    const all = {};
+    for (let i = 0; i < LS.length; i++) {
+      const k = LS.key(i);
+      if (k.startsWith('noclip-visits-')) {
+        all[k.replace('noclip-visits-','')] = JSON.parse(LS.getItem(k) || '[]').length;
+      }
+    }
+    return all;
+  }
+  function getAllUnlocks() {
+    const unlocked = [];
+    for (let i = 0; i < LS.length; i++) {
+      const k = LS.key(i);
+      if (k.startsWith('noclip-unlock-') && LS.getItem(k) === '1') {
+        unlocked.push(k.replace('noclip-unlock-', ''));
+      }
+    }
+    return unlocked;
+  }
+  window.NOCLIP = {
+    handle: getHandle(),
+    doorCount: getDoorCount(),
+    sessionStart: getSessionStart(),
+    time: getNoclipTime(),
+    logVisit: logVisit,
+    getAllVisits: getAllVisits,
+    getAllUnlocks: getAllUnlocks
+  };
+})();
+</script>
+</head>
+<body>
+
+<button class="exit-hint" onclick="exitRoom()" title="ESC to leave">[end transmission]</button>
+
+<div class="term">
+  <div class="screen" id="screen"></div>
+  <div class="continue-hint">
+    <a onclick="exitRoom()">[ press any key to continue ]</a>
+  </div>
+</div>
+
+<div class="statusbar">
+  <span>~ NOCLIP // internal archive · entry #__ENTRY__</span>
+  <span id="clock">??:?? AM</span>
+</div>
+
+<script>
+const screen = document.getElementById('screen');
+
+function escHtml(s) {
+  return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+function append(text, cls='') {
+  if (cls) screen.innerHTML += `<span class="${cls}">${escHtml(text)}</span>`;
+  else screen.innerHTML += escHtml(text);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+function appendRaw(html) {
+  screen.innerHTML += html;
+  window.scrollTo(0, document.body.scrollHeight);
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function typeLine(text, cls='', delay=15) {
+  if (cls) screen.innerHTML += `<span class="${cls}"></span>`;
+  const span = cls ? screen.lastChild : screen;
+  for (const c of text) {
+    span.textContent += c;
+    await sleep(delay + Math.random() * 8);
+  }
+  screen.innerHTML += '\n';
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+// === 内容生成: 当前玩家的"档案条目" ===
+async function buildEntry() {
+  const N = window.NOCLIP;
+  N.logVisit('archive');
+
+  const handle = N.handle;
+  const doors = N.doorCount;
+  const time = N.time.ampm_str;
+  document.getElementById('clock').textContent = time + ' EST';
+
+  const visits = N.getAllVisits();
+  const totalRoomsVisited = Object.values(visits).reduce((a,b) => a+b, 0);
+  const uniqueRooms = Object.keys(visits).length;
+  const mostVisited = Object.entries(visits).sort((a,b) => b[1]-a[1])[0];
+
+  const unlocks = N.getAllUnlocks();
+
+  // entry # 基于 sessionStart 编号
+  const entryNo = String(Math.floor(N.sessionStart / 100000) % 9999).padStart(4, '0');
+  document.querySelector('.statusbar span').textContent = `~ NOCLIP // internal archive · entry #${entryNo}`;
+
+  appendRaw('<span class="dim">connecting...</span>\n');
+  await sleep(800);
+  appendRaw('<span class="grn">connection established</span>\n');
+  await sleep(400);
+
+  await typeLine('', '', 0); appendRaw('\n');
+  await typeLine('--- ENTRY ' + entryNo + ' ---', 'br', 30);
+  await sleep(200);
+  await typeLine('timestamp: ' + new Date().toISOString().slice(0,19).replace('T',' ') + ' EST', 'dim', 12);
+  await sleep(200);
+  await typeLine('subject: ' + handle, 'player', 30);
+  await sleep(200);
+  await typeLine('', '', 0);
+  await typeLine('observations:', 'br', 18);
+  await typeLine('  doors traversed: ' + doors, 'dim', 12);
+  await typeLine('  unique rooms entered: ' + uniqueRooms + ' of 16', 'dim', 12);
+  await typeLine('  total room re-entries: ' + totalRoomsVisited, 'dim', 12);
+  if (mostVisited && mostVisited[1] > 1) {
+    await typeLine('  preferred room: ' + mostVisited[0] + ' (' + mostVisited[1] + ' visits)', 'dim', 12);
+  }
+  if (unlocks.length) {
+    await typeLine('  triggered keywords: ' + unlocks.map(u => u.toUpperCase()).join(', '), 'yel', 18);
+  }
+  await typeLine('', '', 0);
+
+  // 行为类判读 (基于数据)
+  let mood = 'searching.';
+  if (doors < 5) mood = 'newcomer. unaware.';
+  else if (doors < 15) mood = 'curious. still mapping.';
+  else if (doors < 30) mood = 'committed. patterns forming.';
+  else if (doors < 50) mood = 'recurring. seeks fragments.';
+  else if (doors < 80) mood = 'embedded. cannot leave.';
+  else mood = 'permanent resident.';
+
+  await typeLine('mood: ' + mood, 'yel', 25);
+  await sleep(400);
+  await typeLine('', '', 0);
+
+  // 个性化判读
+  const hasArea51 = visits['area51'] || 0;
+  const hasIF = (visits['if-advent']||0) + (visits['if-dark-pit']||0) + (visits['if-library']||0) + (visits['if-dejavu']||0) + (visits['if-catseye']||0);
+  const hasBBS = visits['bbs'] || 0;
+  const hasUnix = visits['unix'] || 0;
+  const hasArchive = visits['archive'] || 0;
+
+  await typeLine('notes:', 'br', 18);
+  if (hasIF >= 3) await typeLine('  subject lingers in text-based fiction. likely literate.', 'dim', 10);
+  if (hasUnix >= 2) await typeLine('  subject has used finger 3+ times. attempts to know others.', 'dim', 10);
+  if (hasBBS >= 2) await typeLine('  subject returns to BBS. reading messages from the dead.', 'dim', 10);
+  if (hasArea51 >= 2) await typeLine('  subject is interested in Area51 dossiers. flagged.', 'dim', 10);
+  if (unlocks.includes('mulder')) await typeLine('  subject typed MULDER. believer.', 'dim', 10);
+  if (unlocks.includes('trustnoone')) await typeLine('  subject typed TRUSTNOONE. observes the surveillance.', 'dim', 10);
+  if (hasArchive >= 2) await typeLine('  subject has been here before. they know.', 'red', 15);
+  if (doors >= 47) await typeLine('  past Level Fun threshold. cannot turn back.', 'red', 15);
+
+  await typeLine('', '', 0);
+  await sleep(300);
+
+  // 推荐
+  await typeLine('recommendation: continue observation.', 'br', 25);
+  await typeLine('next contact: indeterminate.', 'dim', 15);
+  await sleep(200);
+  await typeLine('', '', 0);
+  await typeLine('--- END ENTRY ' + entryNo + ' ---', 'br', 30);
+  await typeLine('', '', 0);
+  await sleep(400);
+  appendRaw('<span class="dim">[ this entry has been recorded.\n  next visitor projected: <span class="player">guest_' + Math.floor(Math.random() * 9000 + 1000) + '</span> ]</span><span class="cursor"></span>\n');
+}
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'noclip-archive' }, '*');
+  } else {
+    if (confirm('end transmission?')) window.close();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.key === 'Enter') exitRoom();
+});
+
+buildEntry();
+</script>
+
+</body>
+</html>

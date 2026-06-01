@@ -360,6 +360,7 @@ const FS = {
       "  Disk quota: 50MB per user. Mail quota: 10MB.",
       "",
       "  Scheduled maintenance: Sun May 14, 02:00-04:00 EST.",
+      "  Guest sessions today: 23 (all between 02:14 and 05:47 AM).",
       "  ITDIV announcements: see /var/news/",
       "",
       "  >>> Please remove .core files from your home directory. <<<",
@@ -577,6 +578,24 @@ const COMMANDS = {
     return node.content.join('\n');
   },
   finger(args) {
+    // Sprint 3: 隐藏碎片 (door 34) — finger aharper 触发
+    if (args[0] && args[0].toLowerCase() === 'aharper' && window.NOCLIP && window.NOCLIP.doorCount >= 34) {
+      const u = USERS['aharper'];
+      const lines = [
+        `Login: aharper                  Name: ${u.real}`,
+        `Directory: /home/aharper        Shell: /bin/csh`,
+        `Never logged in.`, `Last seen: 791 days ago`,
+        `Plan:`,
+        ...u.plan,
+        '.', '.',
+        '[the following lines do not appear in the original .plan file]',
+        '[added by unknown process at the gate above 33 doors]',
+        '',
+        'the second piece: they are sorted by your last visit.',
+        'the more you return, the more they remember.'
+      ];
+      return lines.join('\n');
+    }
     if (!args[0]) {
       // finger 无参数 = who 信息更详细
       const lines = ['Login    Name              TTY  Idle    When         Where'];
