@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Snapshot · Off-chain Voting · 12 dead proposals</title>
+<style>
+/* ============================================================
+   DAO 死提案广场 · 大房间 v0.1 (skeleton)
+   骨架: Snapshot.org 暗色 governance UI 风
+   配色 (period-accurate · 2022 Snapshot):
+     · bg #1c1b20 · card #28272d · text #e8e6e3
+     · 蓝 #485fc7 · 紫 #6f4be3 · 绿 #21c97a · 红 #e74c3c
+   数据: 12 真死提案 (Snapshot/Mirror), 调研中
+============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #15141a;
+  color: #e8e6e3;
+  font-size: 14px;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Snapshot 顶栏
+============================================================ */
+.snapshot-bar {
+  background: #1c1b20;
+  border-bottom: 1px solid #2a2932;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  user-select: none;
+}
+.snapshot-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 17px;
+  color: #fff;
+}
+.snapshot-logo .icon {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #485fc7, #6f4be3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.nav-links {
+  display: flex;
+  gap: 18px;
+  margin-left: 24px;
+  font-size: 14px;
+}
+.nav-links a {
+  color: #999;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.nav-links a:hover, .nav-links a.active { color: #fff; }
+.connect-btn {
+  margin-left: auto;
+  background: linear-gradient(135deg, #485fc7, #6f4be3);
+  color: #fff;
+  border: 0;
+  padding: 8px 18px;
+  border-radius: 23px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.connect-btn:hover { filter: brightness(1.15); }
+.connect-btn.connected {
+  background: #2a2932;
+  cursor: default;
+}
+.connect-btn.connected .dot {
+  width: 8px; height: 8px;
+  background: #e74c3c;
+  border-radius: 50%;
+  animation: pulse-red 1.5s ease-in-out infinite;
+}
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ============================================================
+   仪式: Connect Wallet 假窗
+============================================================ */
+#ritual {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#ritual.hide { display: none; }
+.wallet-modal {
+  background: #1c1b20;
+  border: 1px solid #2a2932;
+  border-radius: 12px;
+  padding: 24px 28px;
+  width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.wallet-modal h2 {
+  font-size: 18px;
+  color: #fff;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.wallet-modal .sub {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 18px;
+}
+.wallet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wallet-opt {
+  background: #28272d;
+  border: 1px solid #2a2932;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.wallet-opt:hover { border-color: #485fc7; background: #2e2d35; }
+.wallet-opt .icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #f6851b, #e2761b);
+  border-radius: 6px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+}
+.wallet-opt .name { font-weight: 600; color: #e8e6e3; }
+.wallet-opt .desc { font-size: 11px; color: #888; margin-top: 1px; }
+.wallet-opt.locked { opacity: 0.5; }
+.wallet-opt.locked .status { font-size: 11px; color: #e74c3c; margin-left: auto; }
+
+.modal-tip {
+  margin-top: 16px;
+  padding: 10px 12px;
+  background: #1a1920;
+  border: 1px solid #2a2932;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #777;
+  line-height: 1.5;
+}
+.modal-tip a { color: #6f8ce0; cursor: pointer; }
+.modal-tip b { color: #aaa; }
+
+.bypass-btn {
+  margin-top: 14px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid #2a2932;
+  color: #888;
+  font-size: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.bypass-btn:hover { color: #ccc; border-color: #485fc7; }
+
+/* ============================================================
+   主区域
+============================================================ */
+.page { display: none; }
+.page.show { display: block; }
+
+.page-head {
+  padding: 32px 24px 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.page-head h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.page-head .sub {
+  font-size: 13px;
+  color: #888;
+}
+.page-head .read-only {
+  margin-top: 14px;
+  background: rgba(231,76,60,0.1);
+  border: 1px solid rgba(231,76,60,0.3);
+  color: #ff8b7a;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 12 提案 grid */
+.proposal-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 24px 40px;
+  display: grid;
+  gap: 14px;
+}
+.proposal-card {
+  background: #1c1b20;
+  border: 1px solid #2a2932;
+  border-radius: 10px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.proposal-card:hover {
+  border-color: #485fc7;
+  background: #1f1e25;
+}
+.proposal-card.visited { opacity: 0.7; }
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.dao-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.dao-name {
+  font-size: 12px;
+  color: #999;
+  font-weight: 600;
+}
+.card-status {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.card-status.ended { background: #2a2932; color: #888; }
+.card-status.failed { background: rgba(231,76,60,0.15); color: #ff8b7a; }
+.card-status.passed { background: rgba(33,201,122,0.15); color: #6ddc9a; }
+
+.proposal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+.proposal-summary {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.vote-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #2a2932;
+  margin-bottom: 6px;
+}
+.vote-bar .seg { height: 100%; }
+.vote-bar .seg.for { background: #21c97a; }
+.vote-bar .seg.against { background: #e74c3c; }
+.vote-bar .seg.abstain { background: #888; }
+
+.vote-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: #888;
+}
+.vote-stats .for { color: #6ddc9a; }
+.vote-stats .against { color: #ff8b7a; }
+.vote-stats .meta { margin-left: auto; color: #555; }
+
+/* 单提案详情 */
+.detail { display: none; max-width: 1100px; margin: 0 auto; padding: 16px 24px; }
+.detail.show { display: block; }
+.detail-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.detail-head .back {
+  background: transparent;
+  border: 1px solid #2a2932;
+  color: #888;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.detail-head .back:hover { color: #fff; border-color: #485fc7; }
+.detail-head .nav { display: flex; gap: 6px; }
+
+.detail-vote-panel {
+  background: #1c1b20;
+  border: 1px solid #2a2932;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.detail-vote-panel h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 12px;
+}
+.locked-vote {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.locked-vote button {
+  flex: 1;
+  background: #28272d;
+  border: 1px solid #2a2932;
+  color: #555;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: not-allowed;
+  position: relative;
+}
+.locked-vote button::after {
+  content: '🔒';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+}
+.vote-disabled-note {
+  font-size: 11px;
+  color: #777;
+  font-style: italic;
+}
+.detail-iframe {
+  width: 100%;
+  height: 70vh;
+  min-height: 500px;
+  border: 1px solid #2a2932;
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* 退出 */
+.exit-hint {
+  position: fixed;
+  bottom: 14px;
+  left: 14px;
+  background: #1c1b20;
+  border: 1px solid #2a2932;
+  color: #999;
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 100;
+}
+.exit-hint:hover { color: #fff; border-color: #485fc7; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     仪式: Connect Wallet 假窗
+============================================================ -->
+<div id="ritual">
+  <div class="wallet-modal">
+    <h2>Connect a Wallet</h2>
+    <div class="sub">Choose a wallet to verify ownership and start voting</div>
+
+    <div class="wallet-list">
+      <div class="wallet-opt locked" onclick="walletFail(this)">
+        <div class="icon" style="background:linear-gradient(135deg,#f6851b,#e2761b);">M</div>
+        <div>
+          <div class="name">MetaMask</div>
+          <div class="desc">Browser extension</div>
+        </div>
+        <div class="status">not detected</div>
+      </div>
+      <div class="wallet-opt locked" onclick="walletFail(this)">
+        <div class="icon" style="background:linear-gradient(135deg,#3375bb,#2467a3);">W</div>
+        <div>
+          <div class="name">WalletConnect</div>
+          <div class="desc">QR code · scan with mobile wallet</div>
+        </div>
+        <div class="status">relay offline</div>
+      </div>
+      <div class="wallet-opt locked" onclick="walletFail(this)">
+        <div class="icon" style="background:linear-gradient(135deg,#0052ff,#0033a8);">C</div>
+        <div>
+          <div class="name">Coinbase Wallet</div>
+          <div class="desc">Self-custody · ENS</div>
+        </div>
+        <div class="status">deprecated</div>
+      </div>
+      <div class="wallet-opt locked" onclick="walletFail(this)">
+        <div class="icon" style="background:linear-gradient(135deg,#888,#555);">L</div>
+        <div>
+          <div class="name">Ledger</div>
+          <div class="desc">Hardware wallet</div>
+        </div>
+        <div class="status">no device</div>
+      </div>
+    </div>
+
+    <div class="modal-tip">
+      <b>// 2022-2024 治理冬天.</b> 大部分钱包桥 / RPC 节点 / relay 已停摆.
+      <br>许多 DAO 已转 emergency mode 或解散, 项目页面仍在但治理已停.
+    </div>
+
+    <button class="bypass-btn" onclick="enterReadOnly()">// 仅查看 · 不投票 (read-only mode) →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     顶栏 + 12 提案 grid
+============================================================ -->
+<div class="page" id="page">
+
+<div class="snapshot-bar">
+  <div class="snapshot-logo">
+    <div class="icon">⚡</div>
+    <span>Snapshot</span>
+  </div>
+  <div class="nav-links">
+    <a class="active">Home</a>
+    <a>Spaces</a>
+    <a>Discover</a>
+    <a>Stats</a>
+  </div>
+  <button class="connect-btn connected">
+    <span class="dot"></span>
+    <span>read-only</span>
+  </button>
+</div>
+
+<!-- proposal grid -->
+<div id="grid-screen">
+  <div class="page-head">
+    <h1>Featured Proposals · 12 archived</h1>
+    <div class="sub">2020-2023 · all closed · vote period ended</div>
+    <div class="read-only">
+      <span>⚠</span>
+      <span>READ-ONLY MODE · 钱包未连接 · 投票按钮已锁 · 这些提案已结束</span>
+    </div>
+  </div>
+
+  <div class="proposal-grid" id="grid"></div>
+</div>
+
+<!-- 单提案详情 -->
+<div class="detail" id="detail">
+  <div class="detail-head">
+    <button class="back" onclick="backToGrid()">← back to feed</button>
+    <div class="nav">
+      <button class="back" onclick="prevProp()">◄ prev</button>
+      <button class="back" onclick="nextProp()">next ►</button>
+    </div>
+  </div>
+  <div class="detail-vote-panel" id="detail-panel"></div>
+  <iframe class="detail-iframe" id="detail-frame"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+</div>
+
+</div>
+
+<div class="exit-hint" onclick="exitRoom()" title="ESC to leave">⎋ disconnect</div>
+
+<script>
+// ============================================================
+// 12 死提案 · 调研中, 占位
+// ============================================================
+const PROPOSALS = [
+ {
+  "id": "yam-yip1",
+  "dao_name": "Yam Finance",
+  "dao_color": "#ffc83d",
+  "title": "YIP-1: Proposal Mechanics",
+  "summary": "YAM 暴雷后第 12 天 · 创世团队 (Brock/Will/Trent) 抛出 YAMv3 救生筏治理框架 · DeFi 史第一个 [被 bug 杀死再用 DAO 召回] 的实验",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "For",
+    "score": 795087,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Against",
+    "score": 4949,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 412,
+  "end_date": "2020-08-27",
+  "url": "https://snapshot.org/#/yam.eth/proposal/QmRMxkq98LJhFqJAC5GNCHrCwe3FFzxveb7MPzLYDCKT49"
+ },
+ {
+  "id": "yam-space",
+  "dao_name": "Yam Finance",
+  "dao_color": "#ffc83d",
+  "title": "Send YAM into space",
+  "summary": "YAM 暴雷期间社区戏谑提案: 等市值到 1 万亿美元用 SpaceX 把 YAM 真送上太空 · 跟 YIP-1 救命提案同窗存在 · 一个濒死 DAO 在投太空发射",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Yes",
+    "score": 85,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Nope",
+    "score": 523,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 89,
+  "end_date": "2020-08-27",
+  "url": "https://snapshot.org/#/yam.eth/proposal/QmZdxDV3NuLzWdDPx4Bwi9zrcguCKkw2zUSLXWZmyBpNgg"
+ },
+ {
+  "id": "index-uniswap1",
+  "dao_name": "Index Coop",
+  "dao_color": "#e8417f",
+  "title": "[UNISWAP-1] Reduce UNI Governance Thresholds (proxy vote)",
+  "summary": "Uniswap 历史第一次正式治理提案的代理投票 · 主治理 96% 赞成但 quorum 没达到 · web3 史上首例 [绝大多数赞成但没过] · Index Coop 在历史现场旁录了一段空白",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "For",
+    "score": 0,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Against",
+    "score": 0,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 0,
+  "end_date": "2020-10-17",
+  "url": "https://snapshot.org/#/index-coop.eth/proposal/QmQwPPDoByYoKsLudfMTSNLeXLmyo4NpRsEuu1DDbyvuHU"
+ },
+ {
+  "id": "constitution-dao",
+  "dao_name": "ConstitutionDAO",
+  "dao_color": "#b22234",
+  "title": "Refunds are now available",
+  "summary": "47M USD 筹齐但拍卖输给 Citadel CEO Ken Griffin (4320 万). 4 年过去, gas 比退款贵, 90% 散户拿不回钱. 网站还在 Netlify 上守夜, 没人维护, 拒绝下线.",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Claim refund",
+    "score": 1,
+    "color": "#888"
+   },
+   {
+    "label": "Redeem $PEOPLE",
+    "score": 1,
+    "color": "#888"
+   }
+  ],
+  "total_voters": 17437,
+  "end_date": "2021-11-21 至今",
+  "url": "https://www.constitutiondao.com/"
+ },
+ {
+  "id": "sushi-maki-comp",
+  "dao_name": "Sushi",
+  "dao_color": "#f338c3",
+  "title": "0xMaki Compensation (10 选项混乱投票)",
+  "summary": "ChefNomi 套现 1300 万跑路, SBF 接私钥, 社区把治理压力推给唯一还在的核心. 投票决定要付 0xMaki 多少 SUSHI · 10 个选项分票 · 1.5M SUSHI 以 16 万票胜出",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "1,500,000 SUSHI",
+    "score": 160638,
+    "color": "#21c97a"
+   },
+   {
+    "label": "其他 9 个选项",
+    "score": 276617,
+    "color": "#888"
+   }
+  ],
+  "total_voters": 312,
+  "end_date": "2020-09-13",
+  "url": "https://snapshot.org/#/sushigov.eth/proposal/QmRtN1736QLy7Kr74iMXn2YgaPy8NkxmxSJq8c612HdJ1N"
+ },
+ {
+  "id": "sushi-headchef",
+  "dao_name": "Sushi",
+  "dao_color": "#f338c3",
+  "title": "Head Chef Election Final Vote",
+  "summary": "Jared Grey 当选 (83%) · 6 个月后 SEC 给 Sushi 发 Wells Notice · 治理停转一整年 · 后续敲定的 50 万 USDC+50 万 SUSHI 薪酬包被批 [DAO 史上最贵 CEO]",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Jared Grey",
+    "score": 10648831,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Andy Forman",
+    "score": 1594382,
+    "color": "#888"
+   },
+   {
+    "label": "其他 3 人",
+    "score": 700000,
+    "color": "#888"
+   }
+  ],
+  "total_voters": 1881,
+  "end_date": "2022-10-03",
+  "url": "https://snapshot.org/#/sushigov.eth/proposal/bafkreifkvrkobnbzy6j7th244kcvbryg2qiq4digepljyaqgnnnlwdvyza"
+ },
+ {
+  "id": "ens-brantly",
+  "dao_name": "ENS",
+  "dao_color": "#5298ff",
+  "title": "[EP6.1] Removal of Brantly Millegan as Director",
+  "summary": "Brantly 2016 反 LGBT tweet 引爆社区 · 罢免投票 Against 略胜 (不罢免), abstain 70 万 · 但 Brantly 后来还是被基金会 [主动离职] · 链上说不罢免, 台下还是走了",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "For (remove)",
+    "score": 1370000,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Against (keep)",
+    "score": 1580000,
+    "color": "#e74c3c"
+   },
+   {
+    "label": "Abstain",
+    "score": 690000,
+    "color": "#888"
+   }
+  ],
+  "total_voters": 4843,
+  "end_date": "2022-03-08",
+  "url": "https://snapshot.org/#/ens.eth/proposal/0xa9a2dc5a52ea54b478c4c5fea88540622dff7ad5000f8d146dff482c6e6b6055"
+ },
+ {
+  "id": "nouns-ragequit",
+  "dao_name": "Nouns",
+  "dao_color": "#d62a4a",
+  "title": "DAO Split / Rage Quit Signaling",
+  "summary": "[DAO 学会了离婚] · 信号投票通过后, V3 上线 Split 功能, 9 月真的有人触发分裂, 把 2.5 万 ETH (4500 万美元) 从主金库分走成立 NounsDAO Fork · 主金库瞬间缩水 25%",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Urgent & important",
+    "score": 144,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Not urgent but important",
+    "score": 36,
+    "color": "#888"
+   },
+   {
+    "label": "Don't build at all",
+    "score": 2,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 182,
+  "end_date": "2023-03-21",
+  "url": "https://snapshot.org/#/nouns.eth/proposal/0x7f4db41648494a7406d58a2a621280fb3568aaa87c5f26aadd36b1f657a0e7a9"
+ },
+ {
+  "id": "olympus-oip76",
+  "dao_name": "OlympusDAO",
+  "dao_color": "#708bb0",
+  "title": "OIP-76: Create Inverse Bond Policy Lever",
+  "summary": "(3,3) 神话破灭的官方文档 · OHM 从 $1300 暴跌跌破 backing 价 · Policy Team 紧急甩出反向债券救命阀 · 通过后一周, OHM 从 $230 再跌到 $50 · 现在 OHM 在 $15 徘徊",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Authorize",
+    "score": 115811,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Do not",
+    "score": 138,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 287,
+  "end_date": "2022-01-25",
+  "url": "https://snapshot.org/#/olympusdao.eth/proposal/0xa544837835f3c4e681efba18d33623d4eb2acedec352dfc3c926a45902cd3612"
+ },
+ {
+  "id": "olympus-oip93",
+  "dao_name": "OlympusDAO",
+  "dao_color": "#708bb0",
+  "title": "OIP-93: Mint and Sync",
+  "summary": "OIP-76 没救住 · 3 个月后再出 OIP-93 · 公开承认 backing 已撑不住, 只能加印缓冲 · 99% 通过但市场冷漠 · OHM 再跌一波 · DAO 治理无法对抗市场的标本",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Implement",
+    "score": 887868,
+    "color": "#21c97a"
+   },
+   {
+    "label": "Reduce RR",
+    "score": 125524,
+    "color": "#888"
+   },
+   {
+    "label": "Don't implement",
+    "score": 384,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 1024,
+  "end_date": "2022-04-22",
+  "url": "https://snapshot.org/#/olympusdao.eth/proposal/0xf0e62d0a9eeb47a295bab9a8d0cc84c0d4de0a8cb000a38fb28e301cd96b4eb6"
+ },
+ {
+  "id": "bankless-rename",
+  "dao_name": "Bankless",
+  "dao_color": "#f97316",
+  "title": "Ratify Transition Council · Rename to Black Flag DAO",
+  "summary": "DAO 史少见的 [通过投票公开承认运营失败 + 完整死亡仪式 + 改名转世] · 过渡委员会被授权改名 / 重写 Constitution / 重新设计 BANK 代币 · 现在叫 Black Flag, 提案页定格在 2024-10-25",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Yes (ratify)",
+    "score": 19040000,
+    "color": "#21c97a"
+   },
+   {
+    "label": "No",
+    "score": 1090000,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 1283,
+  "end_date": "2024-11-01",
+  "url": "https://snapshot.org/#/banklessvault.eth/proposal/0xb3fb4791635d136daf64d5e776d611fabc8b52533910d42a0eeae6b926d83304"
+ },
+ {
+  "id": "fwb-treasury",
+  "dao_name": "FWB",
+  "dao_color": "#ff6b9d",
+  "title": "FWB Treasury Diversification",
+  "summary": "2021 加密文化俱乐部巅峰期 · 卖 7% FWB (70 万美元) 分散金库 · 92.7% 通过 · 4 年后多轮裁员 + Trevor McFedries 离开 · 从派对到清算的完美曲线",
+  "status": "ended",
+  "choices": [
+   {
+    "label": "Yes",
+    "score": 63492,
+    "color": "#21c97a"
+   },
+   {
+    "label": "No",
+    "score": 4951,
+    "color": "#e74c3c"
+   }
+  ],
+  "total_voters": 247,
+  "end_date": "2021-05-03",
+  "url": "https://snapshot.org/#/friendswithbenefits.eth/proposal/QmesG4qENC7CtAQRi5KAQbKucqRjPqGh8nJx4aR2G6mran"
+ }
+];
+
+const STORE = 'noclip-dao-v1';
+let currentIdx = -1;
+const visited = new Set(JSON.parse(localStorage.getItem(STORE+'-visited') || '[]'));
+
+function walletFail(el) {
+  const status = el.querySelector('.status');
+  const orig = status.textContent;
+  status.style.color = '#e74c3c';
+  status.textContent = 'connection failed';
+  setTimeout(() => { status.textContent = orig; status.style.color = ''; }, 1200);
+}
+
+function enterReadOnly() {
+  document.getElementById('ritual').classList.add('hide');
+  document.getElementById('page').classList.add('show');
+  renderGrid();
+}
+
+function renderGrid() {
+  const g = document.getElementById('grid');
+  g.innerHTML = PROPOSALS.map((p, i) => `
+    <div class="proposal-card ${visited.has(p.id) ? 'visited' : ''}" onclick="openProposal(${i})">
+      <div class="card-head">
+        <div class="dao-avatar" style="background: ${p.dao_color};">${p.dao_name[0]}</div>
+        <div class="dao-name">${escHtml(p.dao_name)}</div>
+        <div class="card-status ended">ENDED</div>
+      </div>
+      <div class="proposal-title">${escHtml(p.title)}</div>
+      <div class="proposal-summary">${escHtml(p.summary)}</div>
+      ${renderVoteBar(p)}
+      ${renderVoteStats(p)}
+    </div>
+  `).join('');
+}
+
+function renderVoteBar(p) {
+  const total = p.choices.reduce((s, c) => s + c.score, 0);
+  if (total === 0) return '<div class="vote-bar"><div class="seg" style="background:#444;flex:1"></div></div>';
+  return '<div class="vote-bar">' +
+    p.choices.map(c => {
+      const pct = (c.score / total * 100);
+      return `<div class="seg" style="background:${c.color}; width:${pct}%"></div>`;
+    }).join('') + '</div>';
+}
+
+function renderVoteStats(p) {
+  const total = p.choices.reduce((s, c) => s + c.score, 0);
+  return `<div class="vote-stats">${
+    p.choices.map(c => {
+      const pct = total === 0 ? 0 : (c.score / total * 100).toFixed(1);
+      const colorClass = c.label.toLowerCase().includes('for') || c.label.toLowerCase().includes('yes') ? 'for' :
+                       (c.label.toLowerCase().includes('against') || c.label.toLowerCase().includes('no') ? 'against' : '');
+      return `<span class="${colorClass}">${escHtml(c.label)} ${pct}%</span>`;
+    }).join('')
+  }<span class="meta">${p.total_voters || 0} voters · ended ${p.end_date}</span></div>`;
+}
+
+function openProposal(idx) {
+  currentIdx = idx;
+  const p = PROPOSALS[idx];
+  visited.add(p.id);
+  localStorage.setItem(STORE+'-visited', JSON.stringify([...visited]));
+  // panel
+  document.getElementById('detail-panel').innerHTML = `
+    <h3>Cast your vote · 🔒 voting closed</h3>
+    <div class="locked-vote">
+      ${p.choices.map(c => `<button disabled>${escHtml(c.label)}</button>`).join('')}
+    </div>
+    <div class="vote-disabled-note">
+      The vote period ended ${p.end_date}. Results: ${
+        p.choices.map(c => {
+          const total = p.choices.reduce((s, c2) => s + c2.score, 0);
+          const pct = total === 0 ? 0 : (c.score / total * 100).toFixed(1);
+          return `${escHtml(c.label)} ${pct}%`;
+        }).join(' · ')
+      } · ${p.total_voters || 0} unique voters.
+    </div>
+  `;
+  document.getElementById('detail-frame').src = p.url;
+  document.getElementById('grid-screen').style.display = 'none';
+  document.getElementById('detail').classList.add('show');
+}
+
+function backToGrid() {
+  document.getElementById('detail').classList.remove('show');
+  document.getElementById('grid-screen').style.display = 'block';
+  renderGrid();
+  window.scrollTo(0, 0);
+}
+
+function prevProp() {
+  openProposal((currentIdx - 1 + PROPOSALS.length) % PROPOSALS.length);
+  window.scrollTo(0, 0);
+}
+function nextProp() {
+  openProposal((currentIdx + 1) % PROPOSALS.length);
+  window.scrollTo(0, 0);
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'dao-graveyard' }, '*');
+  } else {
+    if (confirm('disconnect & leave?')) window.close();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitRoom();
+  if (e.key === 'ArrowLeft' && currentIdx >= 0) prevProp();
+  if (e.key === 'ArrowRight' && currentIdx >= 0) nextProp();
+});
+</script>
+
+</body>
+</html>
