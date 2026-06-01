@@ -467,6 +467,93 @@ body::after {
   .top-banner h1 { font-size: 16px; letter-spacing: 3px; }
 }
 </style>
+<!-- ============================================================
+     NOCLIP shared narrative helper · Sprint 1
+     · handle 持久身份 / 门数 / 时钟 / 余温 / 自见
+============================================================ -->
+<script>
+(function(){
+  const LS = window.localStorage;
+  // 1. handle: 自动生成持久 4 位 guest_XXXX
+  function getHandle() {
+    let h = LS.getItem('noclip-handle');
+    if (!h) {
+      h = 'guest_' + Math.floor(Math.random() * 9000 + 1000);
+      LS.setItem('noclip-handle', h);
+    }
+    return h;
+  }
+  // 2. 门数: 主 index 写入 noclip-door-count, 房间只读
+  function getDoorCount() {
+    return parseInt(LS.getItem('noclip-door-count') || '1', 10);
+  }
+  // 3. session 起始时间 (NOCLIP 共用时钟基)
+  function getSessionStart() {
+    let s = LS.getItem('noclip-session-start');
+    if (!s) {
+      // 永远从 03:14 AM 开始 (NOCLIP 时间, 不是真时间)
+      s = Date.now().toString();
+      LS.setItem('noclip-session-start', s);
+    }
+    return parseInt(s, 10);
+  }
+  // 4. 共用时钟: 起始 03:14 AM + 每扇门 +N 分钟 (+ 实际经过时间)
+  function getNoclipTime() {
+    const sessionMin = (Date.now() - getSessionStart()) / 60000;
+    const doorMin = getDoorCount() * 4;  // 每扇门 +4 分钟
+    const totalMin = 3 * 60 + 14 + sessionMin + doorMin;
+    const h = Math.floor(totalMin / 60) % 24;
+    const m = Math.floor(totalMin) % 60;
+    return {
+      h: h, m: m,
+      str: String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'),
+      ampm: (h < 12 ? 'AM' : 'PM'),
+      ampm_str: ((h % 12) || 12) + ':' + String(m).padStart(2,'0') + ' ' + (h < 12 ? 'AM' : 'PM')
+    };
+  }
+  // 5. 余温: 记录访问 + 取上次访问
+  function logVisit(roomId) {
+    const key = 'noclip-visits-' + roomId;
+    const visits = JSON.parse(LS.getItem(key) || '[]');
+    visits.push(Date.now());
+    if (visits.length > 20) visits.shift();
+    LS.setItem(key, JSON.stringify(visits));
+  }
+  function getVisitInfo(roomId) {
+    const visits = JSON.parse(LS.getItem('noclip-visits-' + roomId) || '[]');
+    return {
+      count: visits.length,
+      lastBefore: visits.length > 1 ? visits[visits.length - 2] : null,
+      isReturn: visits.length > 1
+    };
+  }
+  function formatTimeAgo(ts) {
+    const diff = Date.now() - ts;
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return min + ' min ago';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + ' hr ago';
+    return Math.floor(hr / 24) + ' day ago';
+  }
+
+  // 暴露到 window
+  window.NOCLIP = {
+    handle: getHandle(),
+    doorCount: getDoorCount(),
+    sessionStart: getSessionStart(),
+    time: getNoclipTime(),
+    logVisit: logVisit,
+    visitInfo: getVisitInfo,
+    timeAgo: formatTimeAgo,
+    // 重计算时钟 (跨长会话)
+    refreshTime: function() { this.time = getNoclipTime(); return this.time; }
+  };
+})();
+</script>
+<!-- Sprint 1: 记录访问 -->
+<script>if(window.NOCLIP) window.NOCLIP.logVisit("area51");</script>
+
 </head>
 <body>
 

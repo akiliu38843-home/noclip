@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>NOCLIP · 叙事线索挑选</title>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --panel: #14141c;
+    --line: #2a2a3e;
+    --text: #e8e8f0;
+    --dim: #8a8aa0;
+    --accent: #ff6b9d;
+    --accent-dim: #4a2a3a;
+    --ok: #5dd39e;
+    --warn: #ffa040;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "PingFang SC", sans-serif;
+    margin: 0;
+    padding: 24px;
+  }
+  h1 { color: var(--accent); font-size: 22px; margin: 0 0 4px; letter-spacing: 2px; }
+  .sub { color: var(--dim); font-size: 13px; line-height: 1.7; margin-bottom: 24px; }
+  .sub b { color: var(--ok); }
+  .sub .warn { color: var(--warn); }
+  .group {
+    background: rgba(20,20,28,0.6);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+  .group-head {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .group-sub { color: var(--dim); font-size: 12px; margin-bottom: 12px; font-style: italic; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 10px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card.selected {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--accent-dim) 100%);
+  }
+  .card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: var(--accent);
+    color: #000;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: bold;
+  }
+  .badges {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    border: 1px solid;
+    font-family: monospace;
+  }
+  .badge.cost-low { color: var(--ok); border-color: #3a6a4a; }
+  .badge.cost-mid { color: var(--warn); border-color: #6a4a2a; }
+  .badge.cost-hi { color: #ff5050; border-color: #6a2a2a; }
+  .badge.safe { color: var(--ok); border-color: #3a6a4a; }
+  .badge.conflict { color: #ff5050; border-color: #6a2a2a; }
+  .name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+    margin: 4px 0;
+  }
+  .what {
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .example {
+    background: #050508;
+    border-left: 2px solid var(--accent);
+    padding: 6px 8px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.5;
+    font-family: monospace;
+  }
+  .example b { color: var(--accent); }
+  .controls {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, transparent 0%, var(--bg) 30%);
+    padding: 24px 0 8px;
+    margin-top: 24px;
+    text-align: center;
+  }
+  button {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #ff8ab3; }
+  button:disabled { background: var(--line); color: var(--dim); cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+    margin-left: 10px;
+  }
+  #status { margin-top: 12px; font-size: 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<h1>叙事线索挑选 · 18 个候选</h1>
+<p class="sub">
+每条都标 <span class="badge cost-low" style="display:inline">cost: low</span> <span class="badge cost-mid" style="display:inline">mid</span> <span class="badge cost-hi" style="display:inline">hi</span> 实现成本 + <span class="badge safe" style="display:inline">safe</span> 跟 Claude Design 不冲突 / <span class="badge conflict" style="display:inline">⚠ conflict</span> 改主 index 冲突需等. <br>
+按价值密度排, 同组里左上最值. 选完点 "📋 复制选择给 AI" 把列表粘回对话.
+</p>
+
+<div class="group">
+  <div class="group-head">A · 持久身份 (你=玩家在所有房间的"人设")</div>
+  <div class="group-sub">最低成本, 立刻有连续感. localStorage 一份, 各房间读同一份</div>
+  <div class="grid" id="g-a"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">B · 幽灵用户 (跨房散落的"另一个人")</div>
+  <div class="group-sub">让 1-2 个虚构角色在多个房间留下痕迹 (不同 handle / 同一气质), 玩家发现"是同一个人"</div>
+  <div class="grid" id="g-b"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">C · 跨房线索 / ARG layer</div>
+  <div class="group-sub">轻量解谜 — 一条线索藏在 A 房间, 答案在 B 房间</div>
+  <div class="grid" id="g-c"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">D · 状态累积 / 余温</div>
+  <div class="group-sub">"上次你来这是 17 分钟前" 这种小信号, 让走过的路有重量</div>
+  <div class="grid" id="g-d"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">E · 元层 (meta-narrative · 你看着你自己)</div>
+  <div class="group-sub">让 NOCLIP 这个产品本身成为故事的一部分</div>
+  <div class="grid" id="g-e"></div>
+</div>
+
+<div class="controls">
+  <button id="copyBtn" disabled>📋 复制选择给 AI</button>
+  <button class="secondary" id="clearBtn">清空选择</button>
+  <div id="status">还没选</div>
+</div>
+
+<script>
+const OPTIONS = {
+  a: [
+    {
+      id: 'persistent-handle',
+      name: 'Handle 贯穿所有房间',
+      cost: 'low', conflict: false,
+      what: '玩家进 NOCLIP 时生成一个固定 handle (`guest_7421`), 写入 localStorage, 所有房间读同一份显示',
+      example: '<b>IRC</b>: [guest_7421] joined #ubuntu<br><b>BBS</b>: LOGIN: <b>GUEST_7421</b> · Last login: ...<br><b>UNIX shell</b>: Last login: ... from dialup21 (你看到你自己 1 小时前的痕迹)'
+    },
+    {
+      id: 'visit-counter-cross',
+      name: '门数计数跨房可见',
+      cost: 'low', conflict: false,
+      what: '从主 index 读 "你走过 N 扇门" 显示在某些房间脚注/侧栏 (各房读 localStorage 同一份)',
+      example: '<b>GeoCities 邻居</b>: 底部 counter 不是 "You are visitor 317" 而是 "<b>This is your 23rd visit</b>"<br><b>BBS</b>: "30 min 余" 改成 "你已穿过 23 扇 · 余 7 扇就到 Level Fun"'
+    },
+    {
+      id: 'last-here',
+      name: '"上次你到这里是 N 前"',
+      cost: 'low', conflict: false,
+      what: '每个房间记录玩家最近一次进入时间. 第二次进同一房显示"你 12 分钟前来过, 还做了 X"',
+      example: '<b>Area51</b>: "Welcome back, GUEST_7421 · last clearance: ROSWELL @ 12 min ago"<br><b>Colossal Cave</b>: "You were last here 47 minutes ago, in the maze."'
+    },
+    {
+      id: 'profile-bag',
+      name: '随身档案袋 (主控台 + 角落)',
+      cost: 'mid', conflict: true,
+      what: '主控台一个角落显示玩家档案 (handle / IP / 进过的房型 / 隐藏物品). 每房可往里塞东西',
+      example: '主控台右下角: <b>guest_7421</b> · 23 doors · 触发: ROSWELL, IWANTTOBELIEVE · 收集: 3 张电话号码<br>(改主 index, 需等 Claude Design)'
+    },
+  ],
+  b: [
+    {
+      id: 'ghost-aharper',
+      name: 'aharper · 1993 退网的幽灵 (5 房)',
+      cost: 'low', conflict: false,
+      what: 'UNIX shell 已有 aharper (1993-03-04 后再没登过, .plan: "I quit. tell my mother I\'m okay"). 让他散落到 4 个其他房间作落款 / 留言 / 邮件残片',
+      example: '<b>BBS</b>: 加一条 MSG 帖 "From: aharper@umich · 1992-12-08 · 我大概要走了, 这地方让我累"<br><b>GeoCities</b>: Heartland 留言簿一条 "alex 1993 was here"<br><b>IRC</b>: chatlog 里 mwilson 提 "anyone hear from aharper lately?"<br><b>Blog 2007</b>: 某博客评论区 "Alex Harper" 留过同样语气的话'
+    },
+    {
+      id: 'ghost-wilson',
+      name: 'mwilson · 论文写到死的研究生 (4 房)',
+      cost: 'low', conflict: false,
+      what: 'UNIX shell 已有 mwilson (CS 研究生 1995). 让他在 Blog 2007 (毕业了写技术博客) / IRC (Ubuntu 圈混) / Webamp 房 (留下 .m3u 文件) 也出现',
+      example: '<b>Blog 2007</b>: 某评论 "Michael Wilson · 我 1995 那时也是 SunOS 用户, 现在 Mac OS X..."<br><b>IRC #ubuntu-devel</b>: 加一行 mwilson 1995 校友说 "this brings back memories"<br>横跨 12 年的角色弧'
+    },
+    {
+      id: 'ghost-eel',
+      name: 'The Eel · 1992 退圈的破解者 (3 房)',
+      cost: 'low', conflict: false,
+      what: 'BBS 房已有 "The Eel\'s Farewell Address" (1992-02, NotSoHumble Babe 被抓后退圈). 让他 IRC chatlog 2005 出现 (回归?) + IF Dark Pit 内一行藏话',
+      example: '<b>IRC 2005</b>: 一行 "&lt;the_eel&gt; ...holy shit, after 13 years I still remember everyone\'s handle"<br><b>Dark Pit</b>: 游戏开头某段隐藏文字 "previous occupant: TheEel, 1992"'
+    },
+    {
+      id: 'ghost-tom',
+      name: 'Tom Anderson · MySpace 联创无处不在 (3 房)',
+      cost: 'low', conflict: false,
+      what: 'MySpace 房 Tom 是必收的. 让他也出现在 UNIX shell (有个 .plan: "btw I\'m founding a website") + IRC (邀请人加他 friend)',
+      example: '<b>UNIX shell</b>: <code>finger tom</code> 显示 "Tom Anderson · plans: starting a social site for friends"<br><b>IRC</b>: 一行 "&lt;tom_anderson&gt; if you want to be on my list, just add me"'
+    },
+    {
+      id: 'ghost-anon',
+      name: '匿名"墙外的人" · 同语气不同 handle (7 房)',
+      cost: 'mid', conflict: false,
+      what: '编一个虚构人物, 永远不报 handle, 但在 7 个不同房用 7 个不同名字 (TheLurker / WatchingYou / op_2202 / anon-78 等) 留下同样语气的话: "I have been here longer than any of you"',
+      example: '<b>Area51 dossier</b>: 一条 op 加 "i have been here longer than any of you"<br><b>BBS MSG</b>: 一行帖 "From: TheLurker · I have been here longer..."<br><b>IRC</b>: "&lt;anon-78&gt; ...longer than any of you"<br>玩家走 30 扇后开始警觉同一句话出现'
+    },
+  ],
+  c: [
+    {
+      id: 'hidden-notes',
+      name: '隐藏纸条 (每 17 扇)',
+      cost: 'mid', conflict: false,
+      what: '每 17 扇门后某个房间藏一张小纸条 "→ 去 X 房间的 Y 区 cat 看 .plan, 找下一片"',
+      example: '<b>第 17 扇</b>: Heartland 房随机一个邻居页内 1 行隐藏注释 "// the next piece is in shell.umich.edu, finger aharper"<br><b>第 34 扇</b>: shell.umich.edu finger aharper 时 .plan 多 1 行 "the next piece is buried in Cornhusker\'s guestbook"<br>走完 5 张拼一句完整话'
+    },
+    {
+      id: 'cross-room-codes',
+      name: '密语跨房解锁',
+      cost: 'mid', conflict: false,
+      what: 'Area51 输 ROSWELL 后, DAO 死提案那间出现一条额外提案 "ROSWELL 计划: deNAS 提案"; BBS 输 BLUEBOOK 后, IRC 房显示一个新频道',
+      example: '<b>Area51 仪式</b>: 输 "MAJESTIC12" 后 localStorage 写 unlock 标志<br><b>DAO</b>: 第 13 条提案 (只有 unlocked 才显) "MAJESTIC12 治理建议 · 1947 立项, 2024-08 投票"<br>(全 localStorage 串联, 不动主 index)'
+    },
+    {
+      id: 'shared-event',
+      name: '同一份"档案"分散在 12 房',
+      cost: 'hi', conflict: false,
+      what: '编一个虚构事件 (例 "1997-08-13 凌晨某 ISP 实验事故"), 12 个房间各看到一个角度: GeoCities 有人写诗追悼, BBS 有 SysOp 警告, IRC chatlog 提及, Area51 dossier 暗示, ...',
+      example: '<b>GeoCities op_1349/wilson</b>: 加一行 "1997-08-13 the night the lines went dead"<br><b>BBS Bulletins</b>: "Bulletin #14 · 813 outage advisory"<br><b>IRC</b>: 一行 "&lt;mdz&gt; oh god not the 813 thing again"<br>走完 12 房集齐完整故事 (重耐心玩家发现, 普通玩家只看到碎片)'
+    },
+    {
+      id: 'inventory-pickup',
+      name: '物件携带 (拾起 / 投递)',
+      cost: 'mid', conflict: true,
+      what: 'A 房 你"拾起"一个物 (例 Area51 一张电话号码), 之后某房可以"用"它 (BBS 输那个号码可拨通隐藏 ANSI)',
+      example: '<b>Area51 op_1349/wilson</b>: 文末 "Glenn Dennis: 505-555-7011"<br><b>BBS 拨号</b>: ATDT 输 505-555-7011 触发隐藏 ANSI screen<br>(需要主 index 共享 inventory, 等 Claude Design)'
+    },
+  ],
+  d: [
+    {
+      id: 'shared-clock',
+      name: '所有房间共用一个 NOCLIP 时钟',
+      cost: 'low', conflict: false,
+      what: '所有房间的"时间"都是同一个真值 + 偏移 (起始 03:14 AM, 每扇门 +N 分钟). 玩家从第 1 扇到第 30 扇能看到 3:14 → 5:47 的连贯流逝',
+      example: '主控台启动 = 03:14 AM. 每开 1 扇门 +5 分钟<br><b>所有房状态栏右上角</b>: 03:14 → 04:32 → 05:47 →<br>玩家第 40 扇时已是 07:14 AM, 房间气氛变化 (BBS log 显示 morning, Winamp 时钟跳 8 AM)'
+    },
+    {
+      id: 'inbox-mailbox',
+      name: '主控台收件箱 (累积来信)',
+      cost: 'mid', conflict: true,
+      what: '主控台左下角一个邮箱 GIF. 走过 N 扇后偶尔投递一封假邮件 (那些角色发给你), 累积 inbox, 玩家点开能读',
+      example: '收到 mwilson @ 第 8 扇: "btw I noticed you fingered me. who are you?"<br>收到 The Eel @ 第 22 扇: "thirteen years and the cops still haven\'t come"<br>收到 aharper @ 第 47 扇 (Level Fun 触发): "you found me. why."<br>(改主 index 收件箱组件, 等 Claude Design)'
+    },
+    {
+      id: 'room-decay',
+      name: '走过的房间显示"余温"',
+      cost: 'low', conflict: false,
+      what: '第二次进同一房, 房间内有微妙改变 — 留言簿多一条 (是你上次留的), 时钟时间向前推, log 里多一行 "you were here at 03:23"',
+      example: '<b>Heartland 留言簿</b>: 第一次访问后, 留言簿底部多一条 "GUEST_7421 was here at 03:23"<br><b>UNIX last 命令</b>: 显示 guest_7421 多次 login 记录<br>累积感'
+    },
+  ],
+  e: [
+    {
+      id: 'see-yourself',
+      name: '你看见你自己',
+      cost: 'low', conflict: false,
+      what: 'IRC chatlog / BBS msg / Blog 评论里偶尔出现一行 "&lt;guest_7421&gt; (your handle) said something" — 但那行是你没真说的. 像看监控录像',
+      example: '<b>IRC chatlog 末尾</b>: 真 chatlog 流后 5 秒, 一行黄字 "&lt;guest_7421&gt; ...wait what?"<br><b>BBS 留言簿</b>: 你访问后, 列表第一条是你的留言 (你没真留)<br>诡异感'
+    },
+    {
+      id: 'noclip-archive-entry',
+      name: 'NOCLIP 自己的档案 entry',
+      cost: 'mid', conflict: false,
+      what: '偶尔一扇门是一个"NOCLIP 内部档案"房 — 显示 "Archive entry #047 · visitor 7421 first entered on 2026-06-01 03:14:00 EST · 23 doors · current cluster: Windows · status: still wandering"',
+      example: '<b>新房间 noclip-archive.html</b>: 黑底打字 stream like<br>"--- ENTRY 0042 ---"<br>"timestamp: 2026-06-01 04:47:23 EST"<br>"subject: guest_7421"<br>"observations: subject opened 23 doors. spent abnormal time in Area51 (4 min). hesitated at Library of Horror. mood: searching."<br>"recommendation: continue observation."<br>"--- END ENTRY ---"'
+    },
+    {
+      id: 'rewind-replay',
+      name: '第 47 扇强制倒带回顾',
+      cost: 'hi', conflict: true,
+      what: 'Level Fun (现 47 扇里程碑) 改成 "强制重播你走过的所有房" — 列表显示 1-46 扇缩略图 + 你每扇做了什么',
+      example: '第 47 扇打开是一个黑色房 "Tonight you walked:"<br>1. (Win98) 一个 useless web<br>2. (XP) 一只猫 GIF<br>3. (Mac S6) 项目文档<br>... (列 46 个)<br>"are you sure you remember all of them?"'
+    },
+    {
+      id: 'visitor-watching',
+      name: '其他访客的余韵 (假象)',
+      cost: 'mid', conflict: false,
+      what: '某些房间显示其他访客留的痕迹. 不是真多人, 是预录的假数据, 跨房感觉"我不是唯一的"',
+      example: '<b>Area51</b>: 一行 "OBSERVATION: 17 other visitors entered this dossier in the last 24h"<br><b>IRC</b>: 服务器树多一个"#noclip-visitors" 频道 (空, 但存在)<br><b>BBS</b>: SysOp 公告 "287 unique callers this month, all in the early morning hours"'
+    },
+  ]
+};
+
+const STORE = 'noclip-narrative-pick';
+let selected = new Set(JSON.parse(localStorage.getItem(STORE) || '[]'));
+
+function render() {
+  for (const [key, items] of Object.entries(OPTIONS)) {
+    const grid = document.getElementById('g-' + key);
+    grid.innerHTML = items.map(o => `
+      <div class="card ${selected.has(o.id) ? 'selected' : ''}" data-id="${o.id}">
+        <div class="badges">
+          <span class="badge cost-${o.cost}">cost: ${o.cost}</span>
+          <span class="badge ${o.conflict ? 'conflict' : 'safe'}">${o.conflict ? '⚠ 改主 index' : 'safe · 不冲突'}</span>
+        </div>
+        <div class="name">${o.name}</div>
+        <div class="what">${o.what}</div>
+        <div class="example">${o.example}</div>
+      </div>
+    `).join('');
+  }
+  document.querySelectorAll('.card').forEach(c => {
+    c.onclick = () => {
+      const id = c.dataset.id;
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      localStorage.setItem(STORE, JSON.stringify([...selected]));
+      render();
+      update();
+    };
+  });
+  update();
+}
+
+function update() {
+  const n = selected.size;
+  document.getElementById('copyBtn').disabled = n === 0;
+  const s = document.getElementById('status');
+  if (n === 0) s.textContent = '还没选';
+  else s.textContent = `已选 ${n} 个 · 我会按价值密度顺序排队做`;
+}
+
+document.getElementById('copyBtn').onclick = () => {
+  const allOpts = Object.values(OPTIONS).flat();
+  const picks = [...selected].map(id => allOpts.find(o => o.id === id)).filter(Boolean);
+  const txt = `# NOCLIP · 叙事线索 picks
+
+按这个顺序做:
+
+${picks.map((p, i) => `${i+1}. ${p.name}
+   - cost: ${p.cost}
+   - 跟 Claude Design ${p.conflict ? '冲突 (改主 index, 需等)' : '不冲突 (可立刻做)'}
+   - 做啥: ${p.what.replace(/<[^>]+>/g, '')}
+`).join('\n')}
+`;
+  navigator.clipboard.writeText(txt).then(() => {
+    document.getElementById('status').textContent = '✅ 已复制到剪贴板, 粘到 Claude 对话窗就行';
+  });
+};
+
+document.getElementById('clearBtn').onclick = () => {
+  selected.clear();
+  localStorage.removeItem(STORE);
+  render();
+};
+
+render();
+</script>
+</body>
+</html>
