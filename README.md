@@ -56,3 +56,8 @@ URL 池来源:
 ## License
 
 MIT. 引用外壳框架各自的 license. URL 池里的 link 仅作为 iframe 链接, 内容归原作者.
+
+
+## Fonts
+
+This project uses fonts from the **Int10h Oldschool PC Font Pack v2.2** (https://int10h.org/oldschool-pc-fonts/) licensed under [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/). See `fonts/LICENSE.txt`.
