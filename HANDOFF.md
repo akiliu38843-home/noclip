@@ -1,6 +1,7 @@
 # NOCLIP · 凌晨档案 — 前端外包简报
 
-> 给设计师/前端工程师的项目上下文. 读完这一篇就够动手了.
+> 给设计师 / 前端工程师的项目上下文. 读完这一篇就够动手了.
+> 任务焦点见 **§ 4** — **最外面的"控制台框架"**, 不是里面的老电脑壳子.
 
 ---
 
@@ -33,93 +34,113 @@
 
 ### 3.1 主产品 `index.html` (1300+ 行, 单文件)
 
-12 种外壳已实现:
-| # | 外壳 | 来源 | 状态 |
-|---|---|---|---|
-| 1 | Windows 98 窗口 | 98.css (MIT) | ✅ |
-| 2 | Windows XP | XP.css (MIT) | ✅ |
-| 3 | Windows 7 | 7.css (MIT) | ✅ |
-| 4 | Mac System 6 | system.css (MIT) | ✅ |
-| 5 | DOS Turbo Vision | TuiCss (MIT) | ✅ |
-| 6 | NES.css 8-bit | NES.css (MIT) | ✅ |
-| 7 | Unix 终端 | terminal.css (MIT) | ✅ |
-| 8 | Netscape Navigator 4 | 自写 CSS | ⚠️ 美术粗糙 |
-| 9 | Internet Explorer 6 | 自写 CSS | ⚠️ 美术粗糙 |
-| 10 | WAP 翻盖手机屏 | 自写 CSS | ⚠️ 美术粗糙 |
-| 11 | MSN Messenger | 自写 CSS | ⚠️ 美术粗糙 |
-| 12 | BBS ANSI 终端 | 自写 CSS | ⚠️ 美术粗糙 |
+**12 种老电脑/浏览器外壳已实现 (这部分别动)**:
+| # | 外壳 | 来源 |
+|---|---|---|
+| 1 | Windows 98 窗口 | 98.css (MIT) |
+| 2 | Windows XP | XP.css (MIT) |
+| 3 | Windows 7 | 7.css (MIT) |
+| 4 | Mac System 6 | system.css (MIT) |
+| 5 | DOS Turbo Vision | TuiCss (MIT) |
+| 6 | NES.css 8-bit | NES.css (MIT) |
+| 7 | Unix 终端 | terminal.css (MIT) |
+| 8 | Netscape Navigator 4 | 自写 CSS |
+| 9 | Internet Explorer 6 | 自写 CSS |
+| 10 | WAP 翻盖手机屏 | 自写 CSS |
+| 11 | MSN Messenger | 自写 CSS |
+| 12 | BBS ANSI 终端 | 自写 CSS |
 
-100+ 个老网页 URL (来源: The Useless Web, Wiby, Cameron's World, JODI, textfiles.com, Project Gutenberg 等).
+100+ 个老网页 URL (来源: The Useless Web, Wiby, Cameron's World, JODI, textfiles.com, Project Gutenberg).
 
-机制:
+机制 (这些行为别改, 视觉表现可改):
 - **拟态门**: 关闭按钮就是开下扇门 (不是浮窗 ×)
 - **故障转场**: 0.5-2s 黑屏 + Web Audio 合成的拨号噪音
-- **走廊转场**: 10% 概率进 CSS 3D 黄色走廊 (向后室 Level 0 致敬)
-- **规则随机**: 邻接图 + 深度梯度 + 集群粘着 (不是均匀骰子)
-- **5 种房型**: 档案 / 玩具 / 幻境 / 杂物 / 休息 — 顶部时间线显示最近 12 扇
-- **里程碑**: 第 7/17/47/100 扇有特殊事件 (47 = Level Fun 强制档案房)
-- **安全兜底**: URL 试探 (fetch 探测), Loading 6s 出 retry, ESC 全局换门
+- **走廊转场**: 10% 概率进 CSS 3D 黄色走廊
+- **规则随机**: 邻接图 + 深度梯度 + 集群粘着
+- **5 种房型**: 档案 / 玩具 / 幻境 / 杂物 / 休息
+- **里程碑**: 第 7/17/47/100 扇有特殊事件
+- **不动 10s 屏幕变红, 18s 强制开门**
 - 状态存浏览器 localStorage
 
-### 3.2 大房间 `large-rooms/*.html`
+### 3.2 大房间 `large-rooms/*.html` (4 间, 这部分也别动)
 
-10% 概率走进"大房间" — 一整个主题站, 不是单页. 已建 2 间:
+10% 概率进"大房间" — 一整个主题站, 不是单页:
 
-| 文件 | 主题 | 来源真实数据 |
+| 文件 | 主题 | 时代 |
 |---|---|---|
-| `geocities-heartland.html` | 1997 GeoCities 邻居街区 (暖黄/comic sans) | 30 个 Wayback CDX 验证 >4KB 的真实 GeoCities 邻里页 |
-| `geocities-area51.html` | 1997 Area51 X档案/UFO 阴谋论 dossier (黑底/绿 CRT) | 30 个 Wayback 验证的 X-Files/UFO/MIB/Hynek 学派 真实老页面 |
+| `geocities-heartland.html` | 1997 GeoCities 邻居街区 (暖黄/comic sans) | Web 1 |
+| `geocities-area51.html` | 1997 Area51 X档案/UFO 阴谋论档案 (黑底/绿 CRT) | Web 1 |
+| `irc-channel.html` | mIRC 6.3 风 + 12 段真 IRC chatlog 打字回放 | Web 1 |
+| `blog-2007.html` | NetNewsWire 2007 风 + 12 篇 2007 经典英文博客 | Web 2 |
 
-两间都有"**入门仪式**":
-- Heartland: 拨号 modem 动画 3.5 秒 + 拨号声合成
-- Area51: 终端密语口令 prompt (输 4+ 字符放行, 几个彩蛋词: ROSWELL / MULDER / MAJESTIC12)
+各自有进门仪式 (拨号 / 密语口令 / IRC 连接 / RSS 订阅).
 
 ### 3.3 决策页 `decisions/next-room-pick.html`
 
-之前给用户挑下扇大房间的 HTML 决策器. 不是产品的一部分, 是工作流的一部分. 可不动.
+工作流决策器, 不是产品. 别动.
 
 ---
 
-## 4. 现在的痛点 / 想找 claude design 帮什么
+## 4. ⭐️ 真正要重做的东西: **最外面的控制台框架**
 
-### 4.1 美术 (优先级最高)
+参考截图: `current-frame-screenshot.png` (打包在 zip 里).
 
-**5 个自写 CSS 的外壳** (Netscape 4 / IE6 / WAP / MSN / BBS) 视觉粗糙. 不是没还原成功, 是"画得太干净", 缺**灰尘感 + 像素失真 + 死链浪漫**. 希望:
-- Netscape 4 → 真还原 1996 年的 chrome (灰金属按钮 + Cosmo 字体 + 进度条爬墙)
-- IE6 → Win XP 蓝色顶栏 + 一堆免费 toolbar 横条 (Yahoo / Google / Ask)
-- WAP → 翻盖屏幕 96×64 px 黑绿
-- MSN → 真 Messenger 2003 配色 + 卡通 emoticon
-- BBS ANSI → 真 ANSI art 字符画当背景, 不是绿字了事
+### 4.1 现在长啥样
 
-7 个开源外壳本身 OK, 但**外壳里的小细节**也可以加味: 鼠标光标变手指、CSS 字体抗锯齿关掉模拟低分辨率、屏幕反光叠加.
+整个 `index.html` 的**最外层 chrome** — 现在是黑底 + 灰绿 + 琥珀色等宽字, 像 1980 年代终端调试器:
 
-### 4.2 转场动画
+- **顶部 4 列状态条**: 穿过几扇门 / 当前类型 / 当前外壳 / URL+深度档
+- **集群指示行**: "集群: Windows (粘 2)"
+- **时间线条**: 最近 12 扇门, 用颜色块标房型 (玩/幻/杂/玩/玩/幻/玩/玩/息/杂/幻)
+- **正中间巨大画布**: 显示 "点任何一扇门" — 实际开门后这里换成"外壳 iframe"
+- **右侧栏**: 外壳清单 / URL 池来源 / 各版本机制变更 (v1/v2/v3/v4) · 像 changelog 弹窗
 
-现在的 "黑屏 + 拨号声" 0.5-2 秒太单调. 想要:
-- 雪花屏 / Hi-8 录像带卡带 / VHS 跟踪条
-- 拟态 BIOS 启动 (有时换出鸡蛋扇)
-- CRT 关机收缩成一条线再黑屏
+这个外层就是**"操作员视角的控制台"** — 玩家是在凌晨 3 点的网管位上, 看着主屏幕里别人在乱串老网页, 旁边一堆调试信息.
 
-### 4.3 大房间扩展 (用户已挑下一批)
+### 4.2 它需要承担的功能 (重做时别丢)
 
-待做大房间清单 (按用户优先级排):
-1. **GeoCities Area51 续集** (本周做, 框架已有)
-2. **IRC 频道实时聊天回放** — mIRC UI + 真 chatlog 打字回放 (用 irclogs.ubuntu.com 公开归档)
-3. **2007 博客圈 RSS 长读** — NetNewsWire 风 RSS reader + 12 个 Wayback 博客快照
+| 区域 | 当前显示 | 必保留信息 |
+|---|---|---|
+| 顶部状态 | 门数 / 房型 / 外壳名 / 深度 / 提示文案 | 这 5 项 |
+| 集群指示 | "Windows (粘 2)" 说明走 2 扇 Win 类壳子 | 集群信息 |
+| 时间线 | 12 块彩色 chip | 最近 12 扇 + 当前位置 |
+| 正中画布 | 大块黑屏待开门 | 这是放外壳 iframe 的地方 |
+| 右侧栏 | 12 外壳清单 / URL 池 / 机制 changelog | **可以删** (把 changelog 拿掉, 玩家不需要看) |
+| 隐藏出口 | 角落邮箱 / 关机 / TRANSMIT | ESC + 主路由换门要继续生效 |
 
-未来还想做: BBS 拨号站 / MySpace 2005 国外乐队页 / DAO 死提案广场.
+### 4.3 现在的痛点
 
-### 4.4 不要触碰的硬约束
+1. **太像 dev console** — 用户不是工程师, 不需要看 "粘 2" "深度档 1 (混合)" 这种术语
+2. **右侧 changelog 是给我自己看的** — 上线版本应该砍掉
+3. **正中央太空旷** — 没开门时占了 70% 屏, 像没加载完的样子
+4. **配色割裂** — 控制台是 80 年代终端, 但里面跳出来的可能是 Win XP 蓝色, 跳得太硬
 
-- **不要引入 build** — 必须保持单文件 HTML, 无 npm install, 无 webpack
-- **不要换框架** — 不要 React/Vue/Svelte, 纯 vanilla JS
+### 4.4 想要的方向 (不限死, 给你参考)
+
+几个画风都行, 你选**最贴 §2 vibe** 的:
+
+- **A. 旧监控录像室**: 整个外层像保安亭, 主屏是 CRT 电视墙的一格, 其他格放过去 11 扇门的截图缩略图. 时间线就是底部的 timecode 条. 周围有"REC ●" "TRACKING" 之类 VHS 标签
+- **B. 老网管控制台**: 像 ICQ / Yahoo Messenger 那种伴随窗口集合 — 主窗口是开门画面, 浮动的 sticky note 写着深度档 / 房型, 任务栏底显示门数. **不要 macOS 风**
+- **C. CGI/Perl 计数器壁纸时代**: 整张页面就是 1999 年个人主页风的 frameset, 中间 frame 给 iframe, 左侧 frame 是 webring 链接, 顶部 frame 是访客计数. 但这跟内层 GeoCities 大房间太像, 容易撞
+- **D. 你自己提**
+
+**统一约束**:
+- 不要 macOS 现代风 / 不要 Material / 不要 iOS 玻璃
+- 不要彩色渐变 hero — 那是 2020 年 SaaS
+- 不要 emoji 大头 (除非反讽用)
+- 字体: 可以用 Comic Sans / Times / 等宽 (但**别用 Inter / SF Pro / Roboto**)
+- 颜色: 受限调色板 (不要 24-bit 渐变), 比如 Windows 16 色 / NES 64 色 / CGA 4 色
+
+### 4.5 一定不能丢的硬约束
+
+- **不要引入 build** — 保持单文件 HTML, 无 npm install / webpack
+- **不要换框架** — 纯 vanilla JS, 不要 React/Vue/Svelte
 - **不要换 host** — 部署在 Vercel 静态
-- **iframe 嵌 Wayback `if_` 模式 URL 必须保留** — 这是内容支柱
-- **后室机制不能丢**: 拟态门 / 不能停 / ESC 全局逃 / 规则随机 / 里程碑
-- **3 个用户硬性偏好**:
-  - BBS 选国外站点 (不要中文 BBS)
-  - MySpace 不要周杰伦 / 不要华语乐队 (用 MCR / FOB 等 emo punk)
-  - GeoCities 可以多做几个不同主题 (邻居 / 阴谋 / 热带 / 太空)
+- **iframe 嵌 Wayback `if_` 模式 URL 必须保留** — 内容支柱
+- **后室机制不能丢**: 拟态门 / 不动屏幕变红 / ESC 全局逃 / 规则随机 / 里程碑
+- **状态保留**: 当前外壳 / 深度 / 集群 / 时间线 / 门计数, 都已在 JS 里, 重做时**只换显示层**, 不要重写状态机
+- **音频继续 Web Audio 合成**, 不要塞 mp3
+- **响应式但只到 720px**: 别管手机, 这是桌面产品
 
 ---
 
@@ -127,11 +148,11 @@
 
 - **HTML/CSS/JS**: 纯原生, 无框架, 单文件 (`index.html` ~ 60KB)
 - **状态**: 浏览器 localStorage (访问历史, 走过的门, 计数器)
-- **iframe**: 双层嵌套 (外壳 `srcdoc` + 内容 URL via `if_` 模式 Wayback)
+- **iframe**: 双层嵌套 (外壳 `srcdoc` + 内容 URL via Wayback `if_` 模式)
 - **音频**: Web Audio API 实时合成 (无音频文件)
 - **3D**: 纯 CSS `perspective` (走廊转场)
-- **依赖**: 7 个开源 CSS 框架通过 CDN (`unpkg`/`jsdelivr`) 引入, 不打包
-- **部署**: Vercel 静态, GitHub source: github.com/akiliu38843-home/noclip
+- **依赖**: 7 个开源 CSS 框架通过 CDN (`unpkg`/`jsdelivr`) 引入
+- **部署**: Vercel 静态, GitHub: github.com/akiliu38843-home/noclip
 
 ---
 
@@ -139,12 +160,15 @@
 
 ```
 noclip/
-├── index.html              # 主产品 (61KB, 1309 行)
+├── index.html              # 主产品 (60KB, 1300+ 行)  ← 重做这里的外层 chrome
 ├── large-rooms/
-│   ├── geocities-heartland.html   # Web1 大房间 1: 邻居街区
-│   └── geocities-area51.html      # Web1 大房间 2: 阴谋论档案
+│   ├── geocities-heartland.html
+│   ├── geocities-area51.html
+│   ├── irc-channel.html
+│   └── blog-2007.html
 ├── decisions/
-│   └── next-room-pick.html        # 工作流决策器 (不是产品)
+│   └── next-room-pick.html
+├── current-frame-screenshot.png   # ← 当前控制台框架截图
 ├── README.md
 └── HANDOFF.md              # ← 你正在读
 ```
@@ -154,13 +178,15 @@ noclip/
 ## 7. 沟通方式 (重要)
 
 产品负责人是**非技术背景**. 报进度时:
+
 - 用大白话 + 生活化类比
 - 不要堆术语 (出现的术语立刻翻译)
 - 不要扔 stacktrace 或长 JSON
-- 报数字前先讲方法 (例: "我扫了 Wayback 5000 个快照, 取内容大小 >5KB 的 30 个", 不要扔个"30 个" 就走)
+- 报数字前先讲方法 (例: "我扫了 Wayback 5000 个快照, 取 >5KB 的 30 个", 不要扔个"30 个"就走)
 - 失败也讲方法 (诚实失败 > 假装通过)
+- 配色 / 字体 / 布局先给**真实参考图** (1999 年某个真页面 / 某部老电影 / 某个老软件截图), 不要凭空生成
 
-时间偏好: 周一-五 9:30-19:00 是活跃时间. 那之外别后台搞动作.
+时间偏好: 周一-五 9:30-19:00 是用户活跃时间.
 
 ---
 

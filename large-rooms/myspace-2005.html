@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>MySpace.com · A place for friends · 2006</title>
+<style>
+/* ============================================================
+   MySpace 2005-2007 · 大房间 v0.1 (skeleton)
+   骨架: 2006 年 MySpace 经典 chrome (橘黄顶栏 + 蓝 nav + 白底)
+   配色限定 (period-accurate):
+     · MySpace 橘 #003399 蓝, #ff8a00 橘, #003366 dark blue
+     · 用户 profile 自定义 CSS 各种荧光粉紫 (由 iframe 内自带, 我们不管)
+   数据: 12 个国外艺人/网红 Wayback 快照 (调研中)
+   开源参考: spacehey.com (1:1 现代复刻, 配色 / nav 结构) + 老 MySpace 截图
+============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  background: #ddd;
+  color: #000;
+  font-size: 11px;
+  min-height: 100vh;
+}
+
+/* ============================================================
+   MySpace 顶栏 (2006 风)
+============================================================ */
+.myspace-bar {
+  background: linear-gradient(180deg, #6699cc 0%, #003366 100%);
+  color: #fff;
+  padding: 0;
+  user-select: none;
+}
+.bar-top {
+  background: #003366;
+  padding: 4px 14px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+.bar-top a { color: #fff; text-decoration: none; margin: 0 6px; }
+.bar-top a:hover { text-decoration: underline; }
+
+.bar-main {
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.logo {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: #fff;
+  line-height: 1;
+}
+.logo .dot { color: #ff8a00; }
+.tagline {
+  color: #fff;
+  font-size: 11px;
+  font-style: italic;
+}
+.bar-search {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.bar-search input {
+  border: 1px solid #003366;
+  padding: 2px 6px;
+  font: 11px Verdana;
+  width: 180px;
+}
+.bar-search button {
+  background: #ff8a00;
+  color: #fff;
+  border: 1px outset #ff8a00;
+  font: bold 11px Verdana;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.bar-nav {
+  background: #003399;
+  padding: 4px 14px;
+  display: flex;
+  gap: 0;
+  font-size: 11px;
+}
+.bar-nav a {
+  color: #fff;
+  text-decoration: none;
+  padding: 4px 10px;
+  border-right: 1px solid #1a4dbd;
+}
+.bar-nav a:hover { background: #ff8a00; }
+.bar-nav a.active { background: #002266; font-weight: bold; }
+
+/* ============================================================
+   仪式: Tom Anderson 加你为好友
+============================================================ */
+#ritual {
+  position: fixed;
+  inset: 0;
+  background: #003366 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="0" y="20" fill="rgba(255,255,255,0.04)" font-size="14">myspace</text></svg>') repeat;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+}
+#ritual.hide { display: none; }
+.friend-request {
+  background: #fff;
+  width: 420px;
+  border: 1px solid #003366;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}
+.fr-head {
+  background: linear-gradient(180deg, #ff8a00 0%, #d97000 100%);
+  color: #fff;
+  padding: 8px 14px;
+  font-weight: bold;
+  font-size: 13px;
+  font-family: Arial, sans-serif;
+}
+.fr-body {
+  padding: 16px;
+  background: #fff;
+}
+.fr-row { display: flex; gap: 14px; margin-bottom: 14px; }
+.fr-pic {
+  width: 80px;
+  height: 80px;
+  background: #ccc;
+  border: 1px solid #999;
+  font-size: 9px;
+  color: #777;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #ffdac0 0%, #e89060 100%);
+  color: #fff;
+  font-family: 'Arial Black', sans-serif;
+  font-size: 32px;
+  font-weight: bold;
+}
+.fr-text { font-size: 12px; line-height: 1.5; flex: 1; }
+.fr-text b { color: #003399; }
+.fr-text .small { color: #777; font-size: 10px; font-style: italic; margin-top: 3px; }
+.fr-actions { display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid #ccc; }
+.fr-btn {
+  border: 1px outset #ddd;
+  background: #f0f0f0;
+  padding: 4px 14px;
+  font: bold 11px Verdana;
+  cursor: pointer;
+}
+.fr-btn.accept { background: #ff8a00; color: #fff; border-color: #ff8a00; }
+.fr-btn.accept:hover { background: #ffa030; }
+.fr-btn.deny:hover { background: #ddd; }
+.fr-tip {
+  margin-top: 14px;
+  font-size: 10px;
+  color: #999;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ============================================================
+   profile picker (仪式后, 选 12 个艺人)
+============================================================ */
+.page-wrap { display: none; }
+.page-wrap.show { display: block; }
+
+.picker-head {
+  background: linear-gradient(180deg, #ffeac0 0%, #ffd080 100%);
+  border: 1px solid #d97000;
+  padding: 10px 14px;
+  margin: 12px;
+  font-family: Arial, sans-serif;
+}
+.picker-head h2 {
+  font-size: 16px;
+  color: #d97000;
+  margin-bottom: 4px;
+}
+.picker-head .sub { font-size: 11px; color: #777; font-style: italic; }
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 0 12px 12px;
+}
+.profile-card {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.15s;
+}
+.profile-card:hover {
+  border-color: #ff8a00;
+  background: #fff8ee;
+  box-shadow: 0 2px 6px rgba(255,138,0,0.2);
+}
+.profile-card .pic {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, #ff8a00, #d93a78);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: bold 24px 'Arial Black', sans-serif;
+  margin-bottom: 6px;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+}
+.profile-card.visited .pic { filter: grayscale(0.5) brightness(0.85); }
+.profile-card .name {
+  font-weight: bold;
+  color: #003399;
+  margin-bottom: 2px;
+}
+.profile-card .tag {
+  color: #777;
+  font-size: 10px;
+  font-style: italic;
+}
+.profile-card .vibe {
+  margin-top: 4px;
+  color: #444;
+  line-height: 1.4;
+  font-size: 10px;
+}
+
+/* ============================================================
+   profile viewer (点 profile 后 · iframe 包真 Wayback 页)
+============================================================ */
+.viewer { display: none; margin: 12px; }
+.viewer.show { display: block; }
+.viewer-bar {
+  background: linear-gradient(180deg, #ffeac0 0%, #ffd080 100%);
+  border: 1px solid #d97000;
+  padding: 8px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+.viewer-bar .who { font-weight: bold; color: #003399; }
+.viewer-bar .who small { color: #777; font-weight: normal; margin-left: 8px; }
+.viewer-bar button {
+  background: #003399;
+  color: #fff;
+  border: 1px outset #003399;
+  padding: 3px 10px;
+  font: 11px Verdana;
+  cursor: pointer;
+}
+.viewer-bar button:hover { background: #002266; }
+.viewer-iframe {
+  width: 100%;
+  height: calc(100vh - 200px);
+  min-height: 500px;
+  border: 1px solid #999;
+  background: #fff;
+}
+
+/* "强制 BGM" 角落指示 */
+.bgm-indicator {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  background: #003399;
+  color: #ff8a00;
+  font: bold 10px Verdana;
+  padding: 4px 10px;
+  border: 1px solid #001a4d;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+.bgm-indicator.show { display: flex; }
+.bgm-indicator .play { animation: pulse 0.5s ease-in-out infinite alternate; }
+@keyframes pulse { from { color: #ff8a00; } to { color: #ffe080; } }
+.bgm-indicator .close-bgm {
+  margin-left: 8px;
+  color: #ddd;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+}
+.bgm-indicator .close-bgm:hover { color: #fff; }
+
+/* 隐藏出口 */
+.exit-hint {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  font-size: 11px;
+  color: #003399;
+  background: #fff;
+  padding: 3px 10px;
+  border: 1px outset #ccc;
+  cursor: pointer;
+  z-index: 100;
+  font: bold 10px Verdana;
+}
+.exit-hint:hover { background: #003399; color: #fff; }
+
+/* 底部 footer 像 MySpace */
+.footer {
+  background: #003366;
+  color: #fff;
+  padding: 12px 14px;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 20px;
+}
+.footer a { color: #ff8a00; text-decoration: none; margin: 0 6px; }
+.footer .copyright { color: #6699cc; margin-top: 4px; }
+
+@media (max-width: 720px) {
+  .bar-search { display: none; }
+  .profile-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     仪式: Tom Anderson 加你为好友
+============================================================ -->
+<div id="ritual">
+  <div class="friend-request">
+    <div class="fr-head">★ NEW FRIEND REQUEST ★</div>
+    <div class="fr-body">
+      <div class="fr-row">
+        <div class="fr-pic">T</div>
+        <div class="fr-text">
+          <b>Tom</b> wants to be your friend!<br>
+          <div class="small">Tom Anderson · A place for friends · Founded 2003</div>
+          <div style="margin-top:8px; font-size:11px; color:#444;">
+            "Hey there! I'm just gettin' my MySpace started. Add me as a friend! - Tom"
+          </div>
+        </div>
+      </div>
+      <div class="fr-actions">
+        <button class="fr-btn accept" onclick="acceptTom()">Approve</button>
+        <button class="fr-btn deny" onclick="acceptTom()">Maybe later</button>
+        <div style="margin-left:auto; font-size:10px; color:#999; padding-top:4px;">
+          (either way Tom joins your friends)
+        </div>
+      </div>
+    </div>
+    <div class="fr-tip" style="padding: 8px 16px 14px;">
+      // 2003-2007 真实情况: 每个新 MySpace 账户都默认加 Tom 为好友
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     主页 · 顶栏 + profile picker
+============================================================ -->
+<div class="page-wrap" id="page">
+
+<div class="myspace-bar">
+  <div class="bar-top">
+    <div>
+      <a>Home</a> | <a>Browse</a> | <a>Search</a> | <a>Invite</a>
+      | <a>Film</a> | <a>Mail</a> | <a>Blog</a> | <a>Favorites</a> | <a>Forum</a>
+    </div>
+    <div>
+      <a>Help</a> | <a>SignOut</a>
+    </div>
+  </div>
+  <div class="bar-main">
+    <div class="logo">my<span class="dot">_</span>space</div>
+    <div class="tagline">a place for friends</div>
+    <div class="bar-search">
+      <input type="text" placeholder="people · music · video · books">
+      <button>SEARCH</button>
+    </div>
+  </div>
+  <div class="bar-nav">
+    <a class="active">Friends</a>
+    <a>Music</a>
+    <a>Video</a>
+    <a>Mobile</a>
+    <a>Classifieds</a>
+  </div>
+</div>
+
+<!-- 选 profile 阶段 -->
+<div id="picker">
+  <div class="picker-head">
+    <h2>★ Featured Profiles · 12 unread requests in your inbox ★</h2>
+    <div class="sub">点任意一个进 profile · 自动播放对方的 song · ESC 退出整间房</div>
+  </div>
+  <div class="profile-grid" id="profile-grid"></div>
+</div>
+
+<!-- 看 profile 阶段 -->
+<div class="viewer" id="viewer">
+  <div class="viewer-bar">
+    <div class="who" id="viewer-who">Loading...</div>
+    <div>
+      <button onclick="prevProfile()">◄ prev</button>
+      <button onclick="nextProfile()">next ►</button>
+      <button onclick="backToPicker()">⌂ back to feed</button>
+    </div>
+  </div>
+  <iframe class="viewer-iframe" id="viewer-frame"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+</div>
+
+<div class="footer">
+  <div>
+    <a>About</a> | <a>FAQ</a> | <a>Terms</a> | <a>Privacy</a>
+    | <a>Safety Tips</a> | <a>Contact MySpace</a> | <a>Report Inappropriate Content</a>
+    | <a>Advertise</a> | <a>MySpace International</a>
+  </div>
+  <div class="copyright">©2003-2007 MySpace.com. All Rights Reserved.</div>
+</div>
+
+</div>
+
+<div class="bgm-indicator" id="bgm">
+  <span class="play">▶</span>
+  <span id="bgm-track">Now Playing: Welcome to the Black Parade · MCR</span>
+  <span class="close-bgm" onclick="toggleBgm()">×</span>
+</div>
+
+<div class="exit-hint" onclick="exitRoom()" title="ESC to leave">[ logout ]</div>
+
+<script>
+// ============================================================
+// 12 profile · 调研中 (代理把 Wayback URL 拉回后填)
+// 占位结构
+// ============================================================
+const PROFILES = [
+ {
+  "id": "mcr",
+  "name": "My Chemical Romance",
+  "handle": "mychemicalromance",
+  "pic_letter": "MCR",
+  "color1": "#cc0000",
+  "color2": "#000000",
+  "tag": "emo / pop-punk · Newark NJ",
+  "vibe": "\"The Black Parade — In Stores Now\" · 大幅军装黑红 banner · \"Welcome to the Black Parade\" 强制循环",
+  "bgm": "Welcome to the Black Parade · MCR",
+  "url": "https://web.archive.org/web/20061206214428if_/http://www.myspace.com/mychemicalromance",
+  "era": "2006-12"
+ },
+ {
+  "id": "fob",
+  "name": "Fall Out Boy",
+  "handle": "falloutboy",
+  "pic_letter": "FOB",
+  "color1": "#1a1a1a",
+  "color2": "#555555",
+  "tag": "pop-punk / emo · Wilmette IL · 106 years old",
+  "vibe": "\"Black Clouds And Underdogs Tour\" · Patrick / Pete Wentz · Street Team · Buddy Icons",
+  "bgm": "Sugar We're Goin Down · Fall Out Boy",
+  "url": "https://web.archive.org/web/20060422091343if_/http://www.myspace.com/falloutboy",
+  "era": "2006-04"
+ },
+ {
+  "id": "panic",
+  "name": "Panic! at the Disco",
+  "handle": "panicatthedisco",
+  "pic_letter": "P!",
+  "color1": "#6b0000",
+  "color2": "#d4af37",
+  "tag": "巴洛克 pop / emo · Las Vegas · 102 years old, Female",
+  "vibe": "A Fever You Can't Sweat Out · \"I Write Sins Not Tragedies\" autoplay · 维多利亚剧院红黑金",
+  "bgm": "I Write Sins Not Tragedies · Panic!",
+  "url": "https://web.archive.org/web/20060422124304if_/http://www.myspace.com/panicatthedisco",
+  "era": "2006-04"
+ },
+ {
+  "id": "paramore",
+  "name": "Paramore",
+  "handle": "paramore",
+  "pic_letter": "PM",
+  "color1": "#ff6600",
+  "color2": "#cc0000",
+  "tag": "pop-punk · Franklin TN · 女主唱",
+  "vibe": "RIOT! era · 橙红涂鸦字 + 街头涂鸦 banner · \"Misery Business\" 当时正爆",
+  "bgm": "Misery Business · Paramore",
+  "url": "https://web.archive.org/web/20070921184243if_/http://myspace.com/paramore",
+  "era": "2007-09"
+ },
+ {
+  "id": "atl",
+  "name": "All Time Low",
+  "handle": "alltimelow",
+  "pic_letter": "ATL",
+  "color1": "#000000",
+  "color2": "#ffd700",
+  "tag": "pop-punk · Lutherville Timonium MD",
+  "vibe": "So Wrong It's Right · 黑白胶片 + 黄色重音 · Top 20 Friend Space · \"So Wrong, Its Jack\" 巡演",
+  "bgm": "Dear Maria, Count Me In · ATL",
+  "url": "https://web.archive.org/web/20080714040132if_/http://www.myspace.com/alltimelow",
+  "era": "2008-07"
+ },
+ {
+  "id": "killers",
+  "name": "The Killers",
+  "handle": "thekillers",
+  "pic_letter": "TK",
+  "color1": "#c8a865",
+  "color2": "#2a52be",
+  "tag": "indie rock / synth-rock · Las Vegas NV",
+  "vibe": "Sam's Town era · 美式沙漠土黄 + 霓虹蓝紫边 · Brandon Flowers (Vox, Synthesizer) · Email List",
+  "bgm": "When You Were Young · The Killers",
+  "url": "https://web.archive.org/web/20070906033308if_/http://www.myspace.com/thekillers",
+  "era": "2007-09"
+ },
+ {
+  "id": "arctic",
+  "name": "Arctic Monkeys",
+  "handle": "arcticmonkeys",
+  "pic_letter": "AM",
+  "color1": "#555555",
+  "color2": "#4a6e8e",
+  "tag": "英国 indie / post-punk revival · Sheffield",
+  "vibe": "\"Dont believe the hype\" · Alex Turner · 当年靠 MySpace 病毒蹿红的标杆 · \"I'll be seeing you in Blackpool\"",
+  "bgm": "I Bet You Look Good on the Dancefloor · AM",
+  "url": "https://web.archive.org/web/20060413222209if_/http://www.myspace.com/arcticmonkeys",
+  "era": "2006-04"
+ },
+ {
+  "id": "cobra",
+  "name": "Cobra Starship",
+  "handle": "cobrastarship",
+  "pic_letter": "CS",
+  "color1": "#39ff14",
+  "color2": "#000000",
+  "tag": "dance-punk / electro-rock · New York NY",
+  "vibe": "霓虹荧光绿黑 + 蛇形 logo · 命名来自 Snakes on a Plane · Gabe Saporta \"被未来救世主带回来\"",
+  "bgm": "Snakes on a Plane (Bring It) · Cobra Starship",
+  "url": "https://web.archive.org/web/20070906031319if_/http://www.myspace.com/cobrastarship",
+  "era": "2007-09"
+ },
+ {
+  "id": "ptv",
+  "name": "Pierce the Veil",
+  "handle": "piercetheveil",
+  "pic_letter": "PTV",
+  "color1": "#4a0e6e",
+  "color2": "#000000",
+  "tag": "post-hardcore / Mexican-American screamo · San Diego",
+  "vibe": "A Flair for the Dramatic · 紫黑哥特视觉 · Vic Fuentes 长发 · Equal Vision 厂牌圈",
+  "bgm": "Currents Convulsive · Pierce the Veil",
+  "url": "https://web.archive.org/web/20080709205553if_/http://www.myspace.com/piercetheveil",
+  "era": "2008-07"
+ },
+ {
+  "id": "tom",
+  "name": "Tom Anderson",
+  "handle": "tom",
+  "pic_letter": "T",
+  "color1": "#ffffff",
+  "color2": "#003399",
+  "tag": "MySpace 联合创始人 · UCLA / Berkeley 校友",
+  "vibe": "2005 年原版 · 经典电脑前回头白衫主图 · \"Tom is in your extended network\" · Status: Friends, Networking",
+  "bgm": "(silence — Tom never set autoplay)",
+  "url": "https://web.archive.org/web/20050409200843if_/http://www.myspace.com/tom",
+  "era": "2005-04"
+ },
+ {
+  "id": "tila",
+  "name": "Tila Tequila",
+  "handle": "tilatequila",
+  "pic_letter": "TT",
+  "color1": "#ff1493",
+  "color2": "#000000",
+  "tag": "MySpace 第一代网红 · model / MTV A Shot at Love",
+  "vibe": "\"Queen of HollyHood\" · 粉黑 emo 美学 · Playboy 第一个亚裔 Cyber Girl · 200 万好友量",
+  "bgm": "Stripper Friends · Tila Tequila",
+  "url": "https://web.archive.org/web/20060415173403if_/http://myspace.com/tilatequila",
+  "era": "2006-04"
+ },
+ {
+  "id": "jeffree",
+  "name": "Jeffree Star",
+  "handle": "jeffreestar",
+  "pic_letter": "J*",
+  "color1": "#ff0099",
+  "color2": "#000000",
+  "tag": "scene queen 鼻祖 · 化妆师 / electropop",
+  "vibe": "\"Vanityhood California\" · 死亡芭比粉 + 哥特字 · 近 2000 万 profile views · \"queen bitch in the scene\"",
+  "bgm": "Beauty Killer · Jeffree Star",
+  "url": "https://web.archive.org/web/20070914004458if_/http://myspace.com/jeffreestar",
+  "era": "2007-09"
+ }
+];
+
+const STORE = 'noclip-myspace-v1';
+let currentIdx = -1;
+const visited = new Set(JSON.parse(localStorage.getItem(STORE+'-visited') || '[]'));
+
+function acceptTom() {
+  document.getElementById('ritual').classList.add('hide');
+  document.getElementById('page').classList.add('show');
+  renderGrid();
+  // 仪式后 BGM 启动 (1s 延迟以模拟"页面加载完才放歌")
+  setTimeout(() => {
+    document.getElementById('bgm').classList.add('show');
+    playSynthBGM();
+  }, 1000);
+}
+
+function renderGrid() {
+  const g = document.getElementById('profile-grid');
+  g.innerHTML = PROFILES.map((p, i) => `
+    <div class="profile-card ${visited.has(p.id) ? 'visited' : ''}"
+         onclick="openProfile(${i})">
+      <div class="pic" style="background: linear-gradient(135deg, ${p.color1}, ${p.color2});">
+        ${p.pic_letter}
+      </div>
+      <div class="name">${escHtml(p.name)}</div>
+      <div class="tag">${escHtml(p.tag)} · ${p.era}</div>
+      <div class="vibe">${escHtml(p.vibe)}</div>
+    </div>
+  `).join('');
+}
+
+function openProfile(idx) {
+  currentIdx = idx;
+  const p = PROFILES[idx];
+  visited.add(p.id);
+  localStorage.setItem(STORE+'-visited', JSON.stringify([...visited]));
+  document.getElementById('viewer-who').innerHTML =
+    `<b>${escHtml(p.name)}</b><small>· ${escHtml(p.handle)} · ${p.era}</small>`;
+  document.getElementById('viewer-frame').src = p.url;
+  document.getElementById('picker').style.display = 'none';
+  document.getElementById('viewer').classList.add('show');
+  // 换歌
+  document.getElementById('bgm-track').textContent = `Now Playing: ${p.bgm}`;
+}
+
+function prevProfile() {
+  const i = (currentIdx - 1 + PROFILES.length) % PROFILES.length;
+  openProfile(i);
+}
+function nextProfile() {
+  const i = (currentIdx + 1) % PROFILES.length;
+  openProfile(i);
+}
+function backToPicker() {
+  document.getElementById('viewer').classList.remove('show');
+  document.getElementById('picker').style.display = 'block';
+  renderGrid();
+}
+
+let bgmCtx = null, bgmOscs = [];
+function playSynthBGM() {
+  // 模拟 MySpace 强制 autoplay — 用 Web Audio 合成 8 bit 风格旋律
+  try {
+    bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const seq = [330, 392, 440, 392, 330, 294, 330, 440];  // 简短循环
+    const playLoop = () => {
+      const now = bgmCtx.currentTime;
+      seq.forEach((freq, i) => {
+        const osc = bgmCtx.createOscillator();
+        const gain = bgmCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.008, now + i * 0.35);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.35 + 0.3);
+        osc.connect(gain); gain.connect(bgmCtx.destination);
+        osc.start(now + i * 0.35);
+        osc.stop(now + i * 0.35 + 0.3);
+        bgmOscs.push(osc);
+      });
+    };
+    playLoop();
+    setInterval(playLoop, seq.length * 350 + 800);
+  } catch (e) {}
+}
+
+function toggleBgm() {
+  if (bgmCtx) {
+    try { bgmCtx.close(); } catch(e) {}
+    bgmCtx = null;
+    document.getElementById('bgm').classList.remove('show');
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'myspace-2005' }, '*');
+  } else {
+    if (confirm('SignOut from MySpace?')) window.close();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitRoom();
+  if (e.key === 'ArrowLeft' && currentIdx >= 0) prevProfile();
+  if (e.key === 'ArrowRight' && currentIdx >= 0) nextProfile();
+});
+</script>
+
+</body>
+</html>
