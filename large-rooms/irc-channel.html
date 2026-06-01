@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>mIRC :: ##noclip-archive :: Connected</title>
+<style>
+/* ============================================================
+   IRC 频道实时聊天回放 · 大房间 v0.1 (skeleton)
+   骨架: mIRC 7 (2003 视觉) 配色 + Lucida Console + nick 12 色循环
+   数据: 真实 chatlog (来源: irclogs.ubuntu.com 等公开归档, 调研中)
+   开源参考: KiwiIRC client UI + mIRC color-table
+============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Lucida Console', 'Courier New', 'MS UI Gothic', monospace;
+  background: #c0c0c0;
+  color: #000;
+  font-size: 12px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* mIRC 主窗口 (Win9x 风) */
+.mirc-window {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  margin: 8px;
+  height: calc(100vh - 16px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 标题栏 */
+.title-bar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: 'MS Sans Serif', Tahoma, sans-serif;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+.title-bar .controls {
+  display: flex;
+  gap: 2px;
+}
+.title-bar .ctrl {
+  background: #c0c0c0;
+  color: #000;
+  border: 1px outset #fff;
+  width: 16px;
+  height: 14px;
+  font-size: 10px;
+  line-height: 12px;
+  text-align: center;
+  cursor: pointer;
+  font-family: Tahoma, sans-serif;
+  font-weight: bold;
+}
+.title-bar .ctrl:active { border-style: inset; }
+
+/* 菜单栏 */
+.menu-bar {
+  background: #c0c0c0;
+  border-bottom: 1px solid #808080;
+  padding: 2px 4px;
+  font-family: 'MS Sans Serif', Tahoma, sans-serif;
+  font-size: 11px;
+  display: flex;
+  gap: 12px;
+}
+.menu-bar span { cursor: default; padding: 1px 4px; }
+.menu-bar span:hover { background: #000080; color: #fff; }
+
+/* 工具栏 */
+.toolbar {
+  background: #c0c0c0;
+  border-bottom: 1px solid #808080;
+  padding: 3px 6px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.toolbar button {
+  background: #c0c0c0;
+  border: 1px outset #fff;
+  padding: 2px 6px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 10px;
+  cursor: pointer;
+  min-width: 18px;
+  height: 22px;
+}
+.toolbar button:active { border-style: inset; }
+.toolbar .status {
+  margin-left: auto;
+  font-size: 10px;
+  color: #555;
+  font-family: 'Lucida Console', monospace;
+}
+
+/* 主区域: 左 server tree + 中 chat + 右 user list */
+.main-area {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 180px 1fr 140px;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* 服务器树 */
+.server-tree {
+  background: #fff;
+  border: 1px inset #fff;
+  margin: 4px 0 4px 4px;
+  padding: 4px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+.tree-node {
+  cursor: pointer;
+  padding: 1px 4px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tree-node.server { font-weight: bold; color: #000080; }
+.tree-node.channel { padding-left: 14px; color: #000; }
+.tree-node.channel.active { background: #000080; color: #fff; }
+.tree-node:hover { background: #d4d0c8; }
+.tree-node.channel.active:hover { background: #000080; }
+.tree-toggle { width: 10px; font-family: monospace; }
+
+/* 聊天区 */
+.chat-pane {
+  background: #fff;
+  border: 1px inset #fff;
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.chat-header {
+  background: #c0c0c0;
+  border-bottom: 1px solid #808080;
+  padding: 3px 8px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+}
+.chat-topic {
+  color: #008000;
+  font-size: 11px;
+}
+.chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 6px;
+  font-family: 'Lucida Console', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  background: #fff;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+.chat-log .line { padding: 0; }
+.chat-log .ts { color: #808080; }
+.chat-log .nick { font-weight: bold; }
+.chat-log .nick-bracket { color: #000080; }
+.chat-log .msg-action { color: #800080; font-style: italic; }
+.chat-log .msg-join { color: #008000; font-size: 11px; }
+.chat-log .msg-part { color: #808080; font-size: 11px; }
+.chat-log .msg-sys { color: #b00; font-style: italic; }
+.chat-log .cursor {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: #000;
+  vertical-align: text-bottom;
+  animation: blink 1s steps(2,start) infinite;
+}
+@keyframes blink { to { opacity: 0; } }
+
+/* nick 12 色循环 */
+.nick-c0 { color: #006400; }
+.nick-c1 { color: #b22222; }
+.nick-c2 { color: #1e90ff; }
+.nick-c3 { color: #ff8c00; }
+.nick-c4 { color: #8b008b; }
+.nick-c5 { color: #008b8b; }
+.nick-c6 { color: #d2691e; }
+.nick-c7 { color: #2f4f4f; }
+.nick-c8 { color: #8b4513; }
+.nick-c9 { color: #4b0082; }
+.nick-c10 { color: #b8860b; }
+.nick-c11 { color: #6b8e23; }
+
+.chat-input {
+  border-top: 1px solid #808080;
+  padding: 3px 6px;
+  background: #fff;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.chat-input .nick-self {
+  color: #006400;
+  font-weight: bold;
+  font-size: 12px;
+}
+.chat-input input {
+  flex: 1;
+  border: 1px inset #c0c0c0;
+  padding: 2px 4px;
+  font-family: 'Lucida Console', monospace;
+  font-size: 12px;
+  outline: none;
+}
+
+/* 用户列表 */
+.user-list {
+  background: #fff;
+  border: 1px inset #fff;
+  margin: 4px 4px 4px 0;
+  padding: 4px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+.user-list .header {
+  font-size: 10px;
+  color: #555;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #c0c0c0;
+}
+.user-list .user {
+  padding: 1px 4px;
+  cursor: default;
+}
+.user-list .user.op::before { content: '@ '; color: #008000; font-weight: bold; }
+.user-list .user.voice::before { content: '+ '; color: #b8860b; }
+.user-list .user.normal::before { content: '  '; }
+
+/* 状态栏 */
+.status-bar {
+  background: #c0c0c0;
+  border-top: 1px solid #fff;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-family: 'MS Sans Serif', sans-serif;
+  display: flex;
+  justify-content: space-between;
+  color: #555;
+}
+.status-bar .right { display: flex; gap: 12px; }
+
+/* ============================================================
+   连接仪式 overlay
+============================================================ */
+#ritual {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #c0c0c0;
+  font-family: 'Lucida Console', monospace;
+  padding: 30px;
+}
+#ritual.hide { display: none; }
+.ritual-window {
+  background: #c0c0c0;
+  color: #000;
+  border: 2px outset #fff;
+  width: 480px;
+  font-family: 'MS Sans Serif', Tahoma, sans-serif;
+  font-size: 12px;
+}
+.ritual-window .title-bar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  padding: 3px 8px;
+  font-weight: bold;
+}
+.ritual-body { padding: 16px 20px; }
+.ritual-body .msg { font-family: 'Lucida Console', monospace; font-size: 12px; margin: 4px 0; }
+.ritual-body .msg .ok { color: #008000; }
+.ritual-body .msg .fail { color: #b00; }
+.ritual-body .progress {
+  margin: 14px 0 8px;
+  height: 16px;
+  border: 1px inset #c0c0c0;
+  background: #fff;
+  overflow: hidden;
+}
+.ritual-body .progress > div {
+  height: 100%;
+  background: linear-gradient(90deg, #1084d0, #4a9cf0);
+  width: 0;
+  animation: fill 3.5s linear forwards;
+}
+@keyframes fill { to { width: 100%; } }
+
+/* ============================================================
+   频道选择 grid (仪式后 → 选哪个频道+日期)
+============================================================ */
+.channel-picker {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 20px;
+  margin: 40px auto;
+  max-width: 760px;
+}
+.channel-picker .head {
+  font-family: 'MS Sans Serif', Tahoma, sans-serif;
+  font-size: 14px;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: bold;
+  color: #000080;
+}
+.channel-picker .grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.channel-card {
+  background: #fff;
+  border: 1px inset #fff;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  transition: background 0.1s;
+}
+.channel-card:hover { background: #d4eaff; }
+.channel-card .chan {
+  font-family: 'Lucida Console', monospace;
+  color: #000080;
+  font-weight: bold;
+  font-size: 12px;
+}
+.channel-card .date {
+  color: #555;
+  font-size: 10px;
+  margin-top: 2px;
+}
+.channel-card .vibe {
+  color: #444;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.hidden { display: none !important; }
+
+/* ESC 出口 */
+.exit-hint {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  font-size: 11px;
+  color: #888;
+  background: #c0c0c0;
+  padding: 3px 8px;
+  border: 1px outset #fff;
+  font-family: 'MS Sans Serif', sans-serif;
+  cursor: pointer;
+  z-index: 100;
+}
+.exit-hint:hover { color: #000; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     仪式: 连接服务器
+============================================================ -->
+<div id="ritual">
+  <div class="ritual-window">
+    <div class="title-bar">mIRC 6.3 - Status</div>
+    <div class="ritual-body">
+      <div class="msg">* Connecting to <b>irc.freenode.net</b> (6667)</div>
+      <div class="msg" id="r1" style="opacity:0">* Resolving... <span class="ok">204.176.49.3</span></div>
+      <div class="msg" id="r2" style="opacity:0">* Connected. Sending NICK / USER...</div>
+      <div class="msg" id="r3" style="opacity:0">* Welcome to the freenode IRC Network</div>
+      <div class="msg" id="r4" style="opacity:0">* You are now talking on <b id="ritual-chan">##noclip-archive</b></div>
+      <div class="progress"><div></div></div>
+      <div class="msg" style="font-size:11px; color:#555; margin-top:8px;">
+        // tip: 进入后任意键加速回放 · ESC 退出 · 双击聊天区跳到末尾
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     频道选择 (12 个候选)
+============================================================ -->
+<div id="picker-screen" class="hidden">
+  <div class="channel-picker">
+    <div class="head">▼ 选一个频道夜晚 ▼</div>
+    <div class="grid" id="channels"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     mIRC 主聊天界面 (回放)
+============================================================ -->
+<div id="mirc-screen" class="mirc-window hidden">
+
+  <div class="title-bar">
+    <span>mIRC 6.3 - <span id="title-channel">##noclip-archive</span> [+nt]</span>
+    <div class="controls">
+      <div class="ctrl">_</div>
+      <div class="ctrl">□</div>
+      <div class="ctrl" onclick="exitRoom()">×</div>
+    </div>
+  </div>
+
+  <div class="menu-bar">
+    <span>File</span><span>View</span><span>Favorites</span><span>Tools</span>
+    <span>Commands</span><span>Window</span><span>Help</span>
+  </div>
+
+  <div class="toolbar">
+    <button title="Connect">⚡</button>
+    <button title="Channels">#</button>
+    <button title="Find">🔍</button>
+    <button title="Log">📝</button>
+    <button title="Options">⚙</button>
+    <span class="status" id="toolbar-status">▶ playing · 1.0x</span>
+  </div>
+
+  <div class="main-area">
+
+    <!-- 服务器树 -->
+    <div class="server-tree" id="server-tree"></div>
+
+    <!-- 主聊天 -->
+    <div class="chat-pane">
+      <div class="chat-header">
+        <span>Topic: <span class="chat-topic" id="topic">...</span></span>
+        <span style="font-size:10px;color:#555;">[<span id="mode">+nt</span>]</span>
+      </div>
+      <div class="chat-log" id="log" ondblclick="skipToEnd()"></div>
+      <div class="chat-input">
+        <span class="nick-self">[guest_<span id="guest-id">7421</span>]</span>
+        <input type="text" placeholder="press any key to speed up · ESC to exit" disabled>
+      </div>
+    </div>
+
+    <!-- 用户列表 -->
+    <div class="user-list" id="user-list">
+      <div class="header" id="user-count">0 users</div>
+    </div>
+
+  </div>
+
+  <div class="status-bar">
+    <span id="conn-info">Connected: 0d 0h 0m · 13.4 kb/s</span>
+    <div class="right">
+      <span id="lag-info">Lag: 178ms</span>
+      <span id="ping-info">Ping: 234</span>
+    </div>
+  </div>
+</div>
+
+<div class="exit-hint" onclick="exitRoom()" title="ESC to leave">[/quit] 关闭连接</div>
+
+<script>
+// ============================================================
+// IRC 数据 · 调研中, 先用骨架占位 (调研代理回来后替换)
+// ============================================================
+const SESSIONS = [{"id":"warty_release","server":"irc.freenode.net","channel":"#ubuntu","date":"2004-10-20","topic":"Welcome to #ubuntu | Warty 4.10 has been released!","vibe":"Ubuntu 第一个版本 Warty Warthog 4.10 发布日凌晨","users":["Kamion","SamBozo","Zonko","agraupe","guitarbuddha","jeedee","jono","smeg","steveod","uxi9000"],"lines":[{"t":"02:35","nick":"agraupe","type":"msg","msg":"jeedee: well, in some instances, you do need to go to command line (or at least edit a config file)"},{"t":"02:35","nick":"smeg","type":"msg","msg":"is there any documentation on how to switch window mangers?"},{"t":"02:35","nick":"agraupe","type":"msg","msg":"jeedee: for accents, I will walk you through it step by step"},{"t":"02:35","nick":"jeedee","type":"msg","msg":"Yea I am aware but well, I liked ubuntu ... I will keep arch for my server tho"},{"t":"02:35","nick":"SamBozo","type":"msg","msg":"1st 2 items I went to get were xfce4 and bluefish <g>"},{"t":"02:35","nick":"jeedee","type":"msg","msg":"Oh I know how to deal with accents thank you :)"},{"t":"02:36","nick":"uxi9000","type":"msg","msg":"wow thats cool"},{"t":"02:36","nick":"SamBozo","type":"msg","msg":"just install the other desktop and gdm will have it as a menu oprion"},{"t":"02:36","nick":"uxi9000","type":"msg","msg":"what all does this thing do??"},{"t":"02:36","nick":"smeg","type":"msg","msg":"samnozo im trying to switch to fluxbox but apt-get install fluxbox will not work any sugestions?"},{"t":"02:37","nick":"SamBozo","type":"msg","msg":"what source location are you using?"},{"t":"02:37","nick":"agraupe","type":"msg","msg":"is gnome-theme-extras part of a package list which is not configured by default?"},{"t":"02:37","nick":"SamBozo","type":"msg","msg":"and what is the error"},{"t":"02:37","nick":"Zonko","type":"msg","msg":"Hello."},{"t":"02:37","nick":"smeg","type":"msg","msg":"the ubuntu defaul"},{"t":"02:37","nick":"smeg","type":"msg","msg":"t"},{"t":"02:37","nick":"SamBozo","type":"msg","msg":"what is the error"},{"t":"02:38","nick":"smeg","type":"msg","msg":"E: coun't find pacage  fluxbox"},{"t":"02:38","nick":"smeg","type":"msg","msg":"*package"},{"t":"02:39","nick":"SamBozo","type":"msg","msg":"let me look"},{"t":"02:39","nick":"agraupe","type":"msg","msg":"also, if I uncomment sources in sources.list, and apt-get update, can I then recomment them to remove the additional packages (so I can keep a clean ubuntu system as much as possible)?"},{"t":"02:39","nick":"jeedee","type":"msg","msg":"Hey I think im going to go back to i386 ubuntu even if I have a amd64...only one question tho, any clue why my install cdrom wouldnt mount? (Even if I am in the install)"},{"t":"02:40","nick":"SamBozo","type":"msg","msg":"smeg in synaptic you will need to change repositorys to get it (I think"},{"t":"02:40","nick":"agraupe","type":"msg","msg":"or will I forever be doomed to the universal package list if I switch?"},{"t":"02:40","nick":"uxi9000","type":"msg","msg":"jeedee, did you notice a speed differenc with i686 ubuntu??"},{"t":"02:40","nick":"SamBozo","type":"msg","msg":"agraupe, I switched to get xfce4 and bluefish and then went back and so far all it well"},{"t":"02:41","nick":"jeedee","type":"msg","msg":"Don't know, the i386 wont let me install so it's hard to say"},{"t":"02:41","nick":"agraupe","type":"msg","msg":"I'm hoping that the ubuntu livecd will be on par or better than knoppix"},{"t":"02:41","nick":"agraupe","type":"msg","msg":"it would be great to have a livecd demonstrator and be able to install the same distro without any of the knoppix hdinstall drawbacks"},{"t":"02:42","nick":"smeg","type":"msg","msg":"SamBozo: i dont have a gui"},{"t":"02:42","nick":"jeedee","type":"msg","msg":"Oh great now my cd won't eject :o"},{"t":"02:42","nick":"agraupe","type":"msg","msg":"can I switch to a more restrictive list of repositories (I only want to use universal for packages that aren't anywhere else)"},{"t":"02:42","nick":"SamBozo","type":"msg","msg":"??? smeg  no gui .. why do u want fluxbox?"},{"t":"02:43","nick":"SamBozo","type":"msg","msg":"what kind of install did u do to have no gui?"},{"t":"02:43","nick":"smeg","type":"msg","msg":"SamBozo: gnome keeps giveing me an error when i try to start it"},{"t":"02:43","nick":"SamBozo","type":"msg","msg":"is it an error from xf86 or gnome?"},{"t":"02:44","nick":"SamBozo","type":"msg","msg":"if it's an x error .. like the wrong card then flux box isn't going to help?"},{"t":"02:44","nick":"smeg","type":"msg","msg":"SamBozo: it comes up to the login prompt"},{"t":"02:44","nick":"smeg","type":"msg","msg":"but when i login it hangs "},{"t":"02:44","nick":"SamBozo","type":"msg","msg":"hmm "},{"t":"02:44","nick":"smeg","type":"msg","msg":"in the .xsession file i get /dev/dsp: no such device"},{"t":"02:45","nick":"SamBozo","type":"msg","msg":"that's just saying it's looking for the sound card"},{"t":"02:45","nick":"SamBozo","type":"msg","msg":"shouldn't stop it .. just delay it"},{"t":"02:45","nick":"smeg","type":"msg","msg":"how long of a delay?"},{"t":"02:45","nick":"smeg","type":"msg","msg":"iv given it like 10 min"},{"t":"02:45","nick":"Kamion","type":"msg","msg":"jono: pong"},{"t":"02:45","nick":"guitarbuddha","type":"msg","msg":"I have a quick question where can i get the kernel headers for 2.6.8.1"},{"t":"02:45","nick":"Kamion","type":"msg","msg":"00:18 < jono> are there plans to have a gui based installed in hoary, or will each installer remain d-i based?"},{"t":"02:45","nick":"SamBozo","type":"msg","msg":"did u click on the ok"},{"t":"02:46","nick":"Kamion","type":"msg","msg":"jono: both at the same time, if I have anything to do with it"},{"t":"02:46","nick":"jono","type":"msg","msg":"Kamion, heya man :)"},{"t":"02:46","nick":"smeg","type":"msg","msg":"i did not see an ok "},{"t":"02:46","nick":"jono","type":"msg","msg":"Kamion, it was great meeting you the other day"},{"t":"02:46","nick":"SamBozo","type":"msg","msg":"there is on on the error for /dev/dsp wondow"},{"t":"02:46","nick":"steveod","type":"msg","msg":"linux-kernel-headers-686 or -386"},{"t":"02:46","nick":"agraupe","type":"msg","msg":"couldn't find package gnome-theme-extras"},{"t":"02:47","nick":"jono","type":"msg","msg":"Kamion, it was a shame I couldnt stick around a bit longer - I was running around like a headless chicken - when you freelance you have a thousand bosses ;P"},{"t":"02:47","nick":"SamBozo","type":"msg","msg":"u click ok (get out of my face about it) and then it continues to boot"},{"t":"02:47","nick":"steveod","type":"msg","msg":"oh wait 2.6-686"},{"t":"02:47","nick":"agraupe","type":"msg","msg":"I have the universal sources uncommented and I did apt-get update"},{"t":"02:47","nick":"SamBozo","type":"msg","msg":"might just kit enter and it will go ahead"},{"t":"02:47","nick":"SamBozo","type":"msg","msg":"hit"},{"t":"02:47","nick":"agraupe","type":"msg","msg":"do I also need to do apt-get dist-update?"},{"t":"02:47","nick":"Kamion","type":"msg","msg":"jono: yeah, understood, will try to swing up to Brum sometime and meet up for a beer"},{"t":"02:47","nick":"smeg","type":"msg","msg":"WTF? it just came up"},{"t":"02:47","nick":"Kamion","type":"msg","msg":"sorry my visit had to be a bit truncated too, I'd've liked to stay for the day"},{"t":"02:47","nick":"jono","type":"msg","msg":"Kamion, yeah, sure :) I still need to buy you one"},{"t":"02:48","nick":"smeg","type":"msg","msg":"thanks"},{"t":"02:48","nick":"jono","type":"msg","msg":"Kamion,  no probs, you seema busy chap at the moment"},{"t":"02:48","nick":"guitarbuddha","type":"msg","msg":"I know I should be able to get the kernel source thru apt-get and have added just about every source still cannot find kernel headers for 2.6.8.1 ,anybody have a clue ,any help would be appreciated"}]},{"id":"hoary_release","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2005-04-08","topic":"Hoary release tonight | dev-only channel","vibe":"Hoary Hedgehog 5.04 发布前最后的死线焦虑","users":["Kamion","Slant","crimsun","kaza","mdz","mjt","ogra","sabmoc","zul"],"lines":[{"t":"02:54","nick":"Slant","type":"msg","msg":"ogra: I'm running dual head on NVIDIA."},{"t":"02:55","nick":"ogra","type":"msg","msg":"Slant, which arch ?"},{"t":"02:56","nick":"Slant","type":"msg","msg":"ogra: i386."},{"t":"02:56","nick":"ogra","type":"msg","msg":"hmm.."},{"t":"02:57","nick":"ogra","type":"msg","msg":"Slant, does your screensaver run on both displays or only on the first ?"},{"t":"02:57","nick":"Slant","type":"msg","msg":"It's a single screen that has been xinerama'ed. But Ubuntu's version of xscreensaver doesn't support xinerama, so it only displays on the full first screen."},{"t":"02:57","nick":"Slant","type":"msg","msg":"So in my case, it displays stretched across both monitors."},{"t":"02:58","nick":"Slant","type":"msg","msg":"If I set them up as multiple screens, then it would appear only on the first monitor."},{"t":"02:58","nick":"kaza","type":"msg","msg":"hi"},{"t":"02:58","nick":"ogra","type":"msg","msg":"and if you lock the screen, it shows the unlock dialog in the middle between both displays ?"},{"t":"02:59","nick":"mjt","type":"msg","msg":"someone ban this idiot #ubuntu pls"},{"t":"02:59","nick":"Slant","type":"msg","msg":"https://bugzilla.ubuntu.com/show_bug.cgi?id=7658"},{"t":"03:00","nick":"ogra","type":"msg","msg":"Slant, yup, thats what i'm working on..."},{"t":"03:00","nick":"mdz","type":"msg","msg":"ogra: hey"},{"t":"03:00","nick":"mdz","type":"msg","msg":"ogra: what is the status of hwdb submissions to the server?"},{"t":"03:00","nick":"ogra","type":"msg","msg":"hi mdz "},{"t":"03:01","nick":"ogra","type":"msg","msg":"mdz, still no elmo"},{"t":"03:01","nick":"mdz","type":"msg","msg":"ogra: the deadline was 2005-03-09"},{"t":"03:01","nick":"Slant","type":"msg","msg":"ogra: Yes, it shows it in the middle of both display.s"},{"t":"03:01","nick":"ogra","type":"msg","msg":"i have no server yet..."},{"t":"03:01","nick":"ogra","type":"msg","msg":"Slant, ok"},{"t":"03:01","nick":"mdz","type":"msg","msg":"ogra: once the server is set up, everything else is ready?"},{"t":"03:02","nick":"mdz","type":"msg","msg":"do you have it working with a local server?"},{"t":"03:02","nick":"ogra","type":"msg","msg":"nearly..."},{"t":"03:02","nick":"ogra","type":"msg","msg":"nope, but thats an aftrnoon...."},{"t":"03:02","nick":"mdz","type":"msg","msg":"can you please do that while waiting for elmo?  the release candidate is in three days and there is no way that we will be able to test this properly"},{"t":"03:02","nick":"ogra","type":"msg","msg":"i'll have it ready tomorrow evening "},{"t":"03:02","nick":"mdz","type":"msg","msg":"thank you"},{"t":"03:03","nick":"ogra","type":"msg","msg":"your order ;)"},{"t":"03:03","nick":"mdz","type":"msg","msg":"I don't want your work to go to waste because we don't get the data from our users"},{"t":"03:03","nick":"ogra","type":"msg","msg":"mdz, i already have 110 submissions in my inbox...."},{"t":"03:03","nick":"Slant","type":"msg","msg":"?"},{"t":"03:04","nick":"mdz","type":"msg","msg":"ogra: you know what I mean :-)"},{"t":"03:04","nick":"ogra","type":"msg","msg":"mdz, yep :) dont worry"},{"t":"03:04","nick":"mdz","type":"msg","msg":"\"please email this file to oliver\" is not a very solid submission mechanism :-)"},{"t":"03:04","nick":"ogra","type":"msg","msg":"not at all"},{"t":"03:05","nick":"mdz","type":"msg","msg":"I expect we should get hundreds of thousands of submissions from Hoary if we get this working well"},{"t":"03:05","nick":"ogra","type":"msg","msg":"we will, the people seem to like it....at least thats what i get in the email caomments"},{"t":"03:10","nick":"ogra","type":"msg","msg":"mdz, about the apt-get.org thing, do you think it would be possible to have an additional repo (universe, multiverse, apt-get.org) so we could exclude the stuff we cant do QA for ?"},{"t":"03:12","nick":"ogra","type":"msg","msg":"there is a lot of stuff in apt-get.org where people wont be happy about, e.g. joey hess d-i stuff might be something i think Kamion should review..."},{"t":"03:13","nick":"crimsun","type":"msg","msg":"I'm much less worried about DDs' personal repos than I am others'"},{"t":"03:14","nick":"ogra","type":"msg","msg":"crimsun, sure, but even if its form DDs it may break stuff in universe...."},{"t":"03:14","nick":"crimsun","type":"msg","msg":"ogra: true.  All that's going into multiverse, correct?"},{"t":"03:15","nick":"ogra","type":"msg","msg":"crimsun, not sure about that....and there are things like indiana jones game ROMs there, we wouldnt even want in multivrse"},{"t":"03:16","nick":"ogra","type":"msg","msg":"+e"},{"t":"03:16","nick":"mdz","type":"msg","msg":"ogra: I have to talk to sabdfl about it"},{"t":"03:17","nick":"ogra","type":"msg","msg":"mdz, ood, then i know its in good hands..."},{"t":"03:17","nick":"ogra","type":"msg","msg":"good even..."},{"t":"03:18","nick":"sabmoc","type":"msg","msg":"eesh.. ubuntu is having some security auth problems lately, I just went to the website and it said the certificate was not valid, then I checked something out from svn and that wasn't valid either."},{"t":"03:21","nick":"mdz","type":"msg","msg":"most of the certificates used for the websites are issued by the Canonical CA, not by any of the usual ones whose certificates are trusted by browsers.  It has always been this way."},{"t":"03:30","nick":"ogra","type":"msg","msg":"night all"},{"t":"03:30","nick":"crimsun","type":"msg","msg":"night ogra "},{"t":"03:36","nick":"sabmoc","type":"msg","msg":"mdz, I dont understand how that makes it alright to have invalid certs"},{"t":"03:40","nick":"crimsun","type":"msg","msg":"sabmoc: they're not invalid"},{"t":"03:40","nick":"crimsun","type":"msg","msg":"sabmoc: that's your web browser :-)"},{"t":"03:45","nick":"sabmoc","type":"msg","msg":"crimsun, Im not invalid, I have feelings you know.."},{"t":"03:45","nick":"sabmoc","type":"msg","msg":"crimsun, ok"},{"t":"03:47","nick":"sabmoc","type":"msg","msg":"crimsun, but I dont think the problem is my browser, I think the problem is that the cert was issued for is different than the site I am viewing."},{"t":"03:48","nick":"sabmoc","type":"msg","msg":"at least that is what the message seemed to say"},{"t":"02:54","nick":"zul","type":"msg","msg":"i think you will find that they emacs users will be a bit under stength"},{"t":"03:05","nick":"Kamion","type":"msg","msg":"pitti: you should really include some content with your pings ;)"},{"t":"03:05","nick":"Kamion","type":"msg","msg":"pitti: sorry I wasn't around earlier, I haven't been feeling well"},{"t":"03:08","nick":"ogra","type":"msg","msg":"Kamion, http://www.ubuntulinux.org/wiki/AptGetOrg see the \"Clashes with our packages\" section...."},{"t":"03:15","nick":"Kamion","type":"msg","msg":"ogra: I don't see any reason why we should import packages from apt-get.org that already exist in our repositories; I assume elmo has the sense to know that"},{"t":"03:17","nick":"ogra","type":"msg","msg":"Kamion, we only assumed that it clashes, nobody of the MOTU does know the installer stuff good enough.....i'm fearing it might break something...."},{"t":"03:17","nick":"ogra","type":"msg","msg":"even if it doesnt clash"},{"t":"03:20","nick":"Kamion","type":"msg","msg":"ogra: AFAIK Joey Hess' repository is just a copy of stuff he's also uploaded to Debian"},{"t":"03:20","nick":"Kamion","type":"msg","msg":"ogra: under no circumstances should any installer packages be synced"},{"t":"03:20","nick":"Kamion","type":"msg","msg":"(from there)"},{"t":"03:21","nick":"ogra","type":"msg","msg":"Kamion, ok...thanks for elaborating....nobody of MOTU could make that decision...."}]},{"id":"breezy_release","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2005-10-20","topic":"Breezy released! Release party: see wiki","vibe":"Breezy Badger 5.10 发布夜 · mdz 在另一半球催 sabdfl","users":["HiddenWolf","Keybuk","ProN00b","TMM","daniels","deb_user_ba","mdz","xTina"],"lines":[{"t":"01:20","nick":"TMM","type":"msg","msg":"well, I have a place I could 'stick it up to' but that's hardly productive :)"},{"t":"01:26","nick":"TMM","type":"msg","msg":"lifeless, I'll dick around a bit, I'll figure something out"},{"t":"01:26","nick":"mdz","type":"msg","msg":"TMM: mjg59 is our laptop guru, but if he has any sense he's attending the release party right now ;-)"},{"t":"01:26","nick":"mdz","type":"msg","msg":"he would be the one to talk to about it"},{"t":"01:27","nick":"TMM","type":"msg","msg":"I'll go do that"},{"t":"01:27","nick":"TMM","type":"msg","msg":"I hope he's having a couple of drinks :)"},{"t":"01:27","nick":"TMM","type":"msg","msg":"I see a lot of the regulars are idling now, so I hope everyone is getting nice and drunk :)"},{"t":"01:28","nick":"Keybuk","type":"msg","msg":"knowing mjg59 he's having a couple of bottles of drink"},{"t":"01:28","nick":"mdz","type":"msg","msg":"Keybuk: I would see to it personally, but being on the other side of the planet etc..."},{"t":"01:28","nick":"mdz","type":"msg","msg":"Keybuk: why aren't you there?"},{"t":"01:28","nick":"Keybuk","type":"msg","msg":"wasn't invited"},{"t":"01:28","nick":"Keybuk","type":"msg","msg":"and didn't find out anything about where it was until late this evening when it was too late to get there"},{"t":"01:29","nick":"mdz","type":"msg","msg":"puh-leeze, you're implicitly invited"},{"t":"01:29","nick":"mdz","type":"msg","msg":"it did sound like rather a last-minute affair"},{"t":"01:31","nick":"Keybuk","type":"msg","msg":"yeah"},{"t":"01:31","nick":"mdz","type":"msg","msg":"I think mark just went wherever the wiki said there was a party"},{"t":"01:32","nick":"TMM","type":"msg","msg":"mark has a chopper :)"},{"t":"01:32","nick":"TMM","type":"msg","msg":"that helps in those cases :)"},{"t":"01:32","nick":"ProN00b","type":"msg","msg":"sorry to tell you, but you suck for forcing users to have gcj !!!!!!"},{"t":"01:33","nick":"TMM","type":"msg","msg":"who?"},{"t":"01:33","nick":"ProN00b","type":"msg","msg":"the one whos responsible for it"},{"t":"01:33","nick":"mdz","type":"msg","msg":"ProN00b: first, the code of conduct applies in this channel"},{"t":"01:33","nick":"mdz","type":"msg","msg":"ProN00b: second, openoffice.org are the ones responsible"},{"t":"01:33","nick":"deb_user_ba","type":"msg","msg":"Hi!!"},{"t":"01:33","nick":"ProN00b","type":"msg","msg":"i don't care, i am not a dev anyway"},{"t":"01:34","nick":"mdz","type":"msg","msg":"that makes no difference"},{"t":"01:34","nick":"ProN00b","type":"msg","msg":"openoffice needs it ?"},{"t":"01:34","nick":"ProN00b","type":"msg","msg":"whee"},{"t":"01:34","nick":"ProN00b","type":"msg","msg":"but why does it have a java binary *_*"},{"t":"01:34","nick":"ProN00b","type":"msg","msg":"thats just strange"},{"t":"01:34","nick":"TMM","type":"msg","msg":"ProN00b, the alternative would have been to depend on sun's closed source javaVM, your choice "},{"t":"01:34","nick":"TMM","type":"msg","msg":"ProN00b, :)"},{"t":"01:35","nick":"ProN00b","type":"msg","msg":"i will download it"},{"t":"01:36","nick":"ProN00b","type":"msg","msg":"still can't you somehow hide that java binary from console"},{"t":"01:36","nick":"ProN00b","type":"msg","msg":"rename it or something ?"},{"t":"01:36","nick":"TMM","type":"msg","msg":"ProN00b, yeah, but openoffice will work without it, isn't that a good thing? plus, using gcj is a hell of a lot faster than vm stuff"},{"t":"01:37","nick":"ProN00b","type":"msg","msg":"nothing against gcj in general, i actually like the idea, but i need to run my jar's and i think there might be some fuckup having two java binaries on the system"},{"t":"01:38","nick":"daniels","type":"msg","msg":"ProN00b: dude, if you can't be polite and respectful (as well as remain on-topic -- this is more of an #ubuntu question/rant), please leave"},{"t":"01:41","nick":"ProN00b","type":"msg","msg":"i rather fell this is a development issue, as having a working (as in running sun javavm made for packages) java is quite important to some people  "},{"t":"01:42","nick":"xTina","type":"msg","msg":"ProN00b: install a package with your proprietary jvm of choice that supports /etc/alternatives, and then use update-alternatives to make it defaut. that's exactly what update-alternatives is for."},{"t":"01:43","nick":"HiddenWolf","type":"msg","msg":"daniels, that's way too polite. :)"},{"t":"01:43","nick":"ProN00b","type":"msg","msg":"whats that strange alternatives stuff, i have never heard of it"},{"t":"01:44","nick":"HiddenWolf","type":"msg","msg":"ProN00b, openoffice is sponsored by sun, sun develops java, at least openoffice.org2-base is disfunctional without java, and many other options in -writer and -calc also"},{"t":"01:44","nick":"daniels","type":"msg","msg":"ProN00b: at this point, I'm pretty sure it's ceased to be anything to do with development."},{"t":"01:44","nick":"HiddenWolf","type":"msg","msg":"ProN00b, we can't ship javaVM, so we use gcj"},{"t":"01:44","nick":"HiddenWolf","type":"msg","msg":"ProN00b, and you're trolling, and voilating the code of conduct."},{"t":"01:44","nick":"xTina","type":"msg","msg":"ProN00b: I second daniels, please take this discussion to #ubuntu, there you can learn more about update-alternatives."},{"t":"01:45","nick":"HiddenWolf","type":"msg","msg":"ProN00b, ubotu Ubuntu is an African concept of \"humanity towards others\".  The code of conduct is at: http://www.ubuntulinux.org/community/conduct"},{"t":"01:47","nick":"TMM","type":"msg","msg":"daniels, to his credit, he stopped being impolite and disrespectful a while ago"},{"t":"01:48","nick":"HiddenWolf","type":"msg","msg":"TMM, he shouldn't have started in the first place"},{"t":"01:48","nick":"TMM","type":"msg","msg":"HiddenWolf, true"},{"t":"01:48","nick":"TMM","type":"msg","msg":"but it's also wrong to bash someone for something he stopped doing :)"},{"t":"01:48","nick":"HiddenWolf","type":"msg","msg":"TMM, \"you give me a free OS which works out of the box, but you suck, because it's not exactly how I like it!, Die\" "},{"t":"01:49","nick":"daniels","type":"msg","msg":"TMM: right, but -devel isn't for answering what update-alternatives is."},{"t":"01:49","nick":"HiddenWolf","type":"msg","msg":"daniels, true, that. :)"},{"t":"01:49","nick":"TMM","type":"msg","msg":"daniels, no, you are right"},{"t":"01:49","nick":"TMM","type":"msg","msg":"well, I'll just shut up now, I was having a nice converation on intercal in #ubuntu-nl"},{"t":"01:49","nick":"HiddenWolf","type":"msg","msg":"TMM, but really, if you voilate the coc, you lose credit. :)"},{"t":"01:50","nick":"TMM","type":"msg","msg":"HiddenWolf, obviously, but violating it yourself to tell it to someone in an unpleasant way isn't the way to go either"},{"t":"01:50","nick":"TMM","type":"msg","msg":"\"You will stop making war, even if I have to kill each and every last one of you\""},{"t":"01:50","nick":"TMM","type":"msg","msg":"something like that"},{"t":"01:50","nick":"HiddenWolf","type":"msg","msg":"TMM, curt, not unpleasant."},{"t":"01:51","nick":"HiddenWolf","type":"msg","msg":"TMM, and let's start by porting beagle and that mono cruft to python, then we can talk about intercal. :)"},{"t":"01:51","nick":"xTina","type":"msg","msg":"Once you get the hang of d-i preseeding, infecting the whole world with Ubuntu is a joy :)"},{"t":"01:51","nick":"TMM","type":"msg","msg":"HiddenWolf, noooo, let's port it to intercal!!! :)"},{"t":"01:51","nick":"TMM","type":"msg","msg":"xTina, d-i preseeding?"},{"t":"01:52","nick":"HiddenWolf","type":"msg","msg":"xTina, nice"},{"t":"01:52","nick":"xTina","type":"msg","msg":"TMM: fully-automated installation just with debian-installer, a few python scripts, and cfengine2 abused as just an interpreter"},{"t":"01:53","nick":"xTina","type":"msg","msg":"though this server here is bugging me with its network interfaces"},{"t":"01:53","nick":"xTina","type":"msg","msg":"I should have checked before how it was done :("}]},{"id":"community_meeting","server":"irc.freenode.net","channel":"#ubuntu-meeting","date":"2005-12-13","topic":"Ubuntu Community Meeting | meet schedule on wiki","vibe":"社区会议开场 · 全球分散的 dev 排队报到泡茶","users":["BenC","Fujitsu","Kamion","Keybuk","Riddell","YukiIkyuta","calc","daniels","dieman","doko_","fabbione","janeW","jbailey","mdz","mvo","ogra","pitti","seb128","zul"],"lines":[{"t":"02:54","nick":"mdz","type":"msg","msg":"good morning folks"},{"t":"02:54","nick":"zul","type":"msg","msg":"evening"},{"t":"02:54","nick":"Fujitsu","type":"msg","msg":"Noon."},{"t":"02:54","nick":"dieman","type":"msg","msg":"evening."},{"t":"02:54","nick":"dieman","type":"msg","msg":"cold evening."},{"t":"02:54","nick":"Fujitsu","type":"msg","msg":"Good 1PM."},{"t":"02:54","nick":"Fujitsu","type":"msg","msg":"Good lunch."},{"t":"02:55","nick":"BenC","type":"msg","msg":"good night :)"},{"t":"02:55","nick":"ogra","type":"msg","msg":"(very very very early) mornig"},{"t":"02:55","nick":"doko_","type":"msg","msg":"insane time ... ;-)"},{"t":"02:55","nick":"ogra","type":"msg","msg":"still 5 min to go"},{"t":"02:55","nick":"mdz","type":"msg","msg":"janeW: ping"},{"t":"02:55","nick":"BenC","type":"msg","msg":"through me off that this is actually 9pm Wed for me"},{"t":"02:56","nick":"zul","type":"msg","msg":"oh yeah i have to go tape lost...brb"},{"t":"02:56","nick":"ogra","type":"msg","msg":"mdz, she asked if someone could call her if she doent appear"},{"t":"02:56","nick":"ogra","type":"msg","msg":"*doesnt"},{"t":"02:58","nick":"BenC","type":"msg","msg":"fix me a cup too please?"},{"t":"02:58","nick":"YukiIkyuta","type":"msg","msg":"w00t, tea."},{"t":"02:58","nick":"fabbione","type":"msg","msg":"hmmm 2 minutes.. right time for a smoke :)"},{"t":"02:59","nick":"janeW","type":"msg","msg":"mdz: pong"},{"t":"02:59","nick":"janeW","type":"msg","msg":"*yawn*"},{"t":"02:59","nick":"pitti","type":"msg","msg":"Hello"},{"t":"02:59","nick":"seb128","type":"msg","msg":"hey pitti"},{"t":"03:00","nick":"janeW","type":"msg","msg":"argh, whose idea WAS this!? ;)"},{"t":"03:00","nick":"doko_","type":"msg","msg":"let's start before the coffee gets cold :-)"},{"t":"03:00","nick":"pitti","type":"msg","msg":"coffee?"},{"t":"03:00","nick":"pitti","type":"msg","msg":"how do you want to sleep again after coffee?"},{"t":"03:00","nick":"seb128","type":"msg","msg":"pitti: stuff you drink to wake up on the morning"},{"t":"03:00","nick":"janeW","type":"msg","msg":"pitti: via IV please ;)"},{"t":"03:01","nick":"calc","type":"msg","msg":"janeW: its a good time in the US ;)"},{"t":"03:01","nick":"seb128","type":"msg","msg":"pitti: who said something about sleeping *again*? :)"},{"t":"03:01","nick":"mdz","type":"msg","msg":"waiting to hear from infinity, Riddell, Diziet and daniels"},{"t":"03:01","nick":"Riddell","type":"msg","msg":"I'm here"},{"t":"03:01","nick":"pitti","type":"msg","msg":"seb128: I won't stay awake after getting up at 3..."},{"t":"03:01","nick":"janeW","type":"msg","msg":"calc: heh - not in ZA though (4am)"},{"t":"03:01","nick":"mvo","type":"msg","msg":"pitti: we all know that seb128 does not sleep"},{"t":"03:01","nick":"calc","type":"msg","msg":"janeW: exactly :)"},{"t":"03:01","nick":"seb128","type":"msg","msg":"pitti: sissi :p"},{"t":"03:01","nick":"pitti","type":"msg","msg":"right - \"must ... package ... crack\""},{"t":"03:01","nick":"seb128","type":"msg","msg":"lol"},{"t":"03:02","nick":"calc","type":"msg","msg":"pitti: sorry that package name already taken :)"},{"t":"03:02","nick":"Keybuk","type":"msg","msg":"infinity went to bed ~8 hours ago, so he might need waking up"},{"t":"03:03","nick":"ogra","type":"msg","msg":"probably daniels could poke him"},{"t":"03:03","nick":"ogra","type":"msg","msg":"of jdub"},{"t":"03:03","nick":"ogra","type":"msg","msg":"*or"},{"t":"03:03","nick":"mdz","type":"msg","msg":"sent SMS to infinity and daniels"},{"t":"03:03","nick":"mdz","type":"msg","msg":"Kamion: have you seen Ian?"},{"t":"03:03","nick":"Kamion","type":"msg","msg":"mdz: just about to phone him"},{"t":"03:03","nick":"doko_","type":"msg","msg":"so, the australians take their 3pm tea break? ;-P"},{"t":"03:04","nick":"mdz","type":"msg","msg":"Kamion: thanks"},{"t":"03:04","nick":"Kamion","type":"msg","msg":"although his housemates will kill me tomorrow evening"},{"t":"03:04","nick":"janeW","type":"msg","msg":"if infinity doesn't appear I will never accept his whining about bad meeting times again..."},{"t":"03:05","nick":"Kamion","type":"msg","msg":"no reply"},{"t":"03:05","nick":"jbailey","type":"msg","msg":"janeW: Aww, someone else woke you up.  I should've been quicker."},{"t":"03:05","nick":"jbailey","type":"msg","msg":"janeW: I can be a scary voice to hear on the phone at 2am. =)"},{"t":"03:05","nick":"janeW","type":"msg","msg":"jbailey: lol, that"},{"t":"03:06","nick":"janeW","type":"msg","msg":"'s what I thought, fear woke me up ;)"},{"t":"03:06","nick":"jbailey","type":"msg","msg":"<voice style=\"raspy,deep\">Hello, Jane.  We're waiting for you.</voice"},{"t":"03:06","nick":"mdz","type":"msg","msg":"ok, we need to start without them"},{"t":"03:06","nick":"BenC","type":"msg","msg":"let 'er rip"},{"t":"03:06","nick":"mdz","type":"msg","msg":"let's go in spreadsheet order"},{"t":"03:06","nick":"mdz","type":"msg","msg":"BenC"},{"t":"03:06","nick":"daniels","type":"msg","msg":"actally, I'd like to go first"},{"t":"03:06","nick":"BenC","type":"msg","msg":"ubuntu-server-kernel: in progress - 2.6.15-7.9 contains i386 server kernels. The kernels will be renamed in -8.10. Amd64 will get server kernels in -8.10 aswell (same style as i386 server kernels)."},{"t":"03:06","nick":"BenC","type":"msg","msg":"preventing-hardware-support-regressions: not started"},{"t":"03:06","nick":"BenC","type":"msg","msg":"testing-server-hardware: not started - Will start on this in coming week"},{"t":"03:06","nick":"daniels","type":"msg","msg":"or second"},{"t":"03:07","nick":"BenC","type":"msg","msg":"actually, preventing-hw-s-r will start this week too"},{"t":"03:07","nick":"mdz","type":"msg","msg":"BenC: thanks"},{"t":"03:07","nick":"mdz","type":"msg","msg":"daniels: ok"}]},{"id":"dapper_lts","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2006-06-01","topic":"Dapper 6.06 LTS released! First LTS | dapper-updates open","vibe":"Dapper Drake 6.06 LTS · 第一个 LTS · dapper-updates 首日开放","users":["AlinuxOS","BenC","Seveas","ajmitch","crimsun","doko_","infinity","mdke","mdz","mjg59","sivang"],"lines":[{"t":"12:02","nick":"BenC","type":"msg","msg":"mdz: so a ccrash in nsc-ircc?"},{"t":"12:03","nick":"BenC","type":"msg","msg":"nsc-ircc has some bugs related to probing, I think I may end up backporting to fix that up"},{"t":"12:04","nick":"BenC","type":"msg","msg":"mdz: I'll mark it for dapper-updates"},{"t":"12:04","nick":"mdz","type":"msg","msg":"BenC: I've attached the full dmesg to the bug"},{"t":"12:04","nick":"BenC","type":"msg","msg":"mdz: Ok, thanks"},{"t":"12:04","nick":"crimsun","type":"msg","msg":"BenC: I can confirm that 46947 is nonfatal, occurs on this thinkpad x41-2527"},{"t":"12:05","nick":"mdz","type":"msg","msg":"there were some odd serial8250 messages later on too"},{"t":"12:05","nick":"mdz","type":"msg","msg":"could be related"},{"t":"12:06","nick":"BenC","type":"msg","msg":"crimsun: Can you sub to the bug report too please?"},{"t":"12:06","nick":"BenC","type":"msg","msg":"that sort of fix is something I want tested before I push it out to dapper-updates"},{"t":"12:06","nick":"crimsun","type":"msg","msg":"BenC: done."},{"t":"12:06","nick":"BenC","type":"msg","msg":"thanks"},{"t":"12:07","nick":"BenC","type":"msg","msg":"crimsun: BTW, work has already started on the first post-release dapper kernel, so if you have any patches that missed the release, just shoot them on over"},{"t":"12:07","nick":"doko_","type":"msg","msg":"mdz: dapper-updates is already open?"},{"t":"12:07","nick":"mdz","type":"msg","msg":"doko_: yes it is"},{"t":"12:07","nick":"mdz","type":"msg","msg":"we have the technology"},{"t":"12:07","nick":"crimsun","type":"msg","msg":"BenC: k, I'll git pull this evening"},{"t":"12:07","nick":"mdz","type":"msg","msg":"thanks to cprov"},{"t":"12:08","nick":"ajmitch","type":"msg","msg":"mdz: what will the rules be for universe? all debdiffs get checked by you for -updates?"},{"t":"12:08","nick":"doko_","type":"msg","msg":"nice"},{"t":"12:08","nick":"mdz","type":"msg","msg":"in particular, we can get upgrade fixes into -updates before we go gold"},{"t":"12:08","nick":"BenC","type":"msg","msg":"mmm...gold"},{"t":"12:08","nick":"Seveas","type":"msg","msg":"what's the ETA of gold?"},{"t":"12:09","nick":"mdz","type":"msg","msg":"ajmitch: they'll be reviewed by the archive team"},{"t":"12:09","nick":"BenC","type":"msg","msg":"mdz: will we have gold cd's in paris to take home? :)"},{"t":"12:09","nick":"ajmitch","type":"msg","msg":"ok"},{"t":"12:09","nick":"mdz","type":"msg","msg":"hmm, possibly"},{"t":"12:09","nick":"mjg59","type":"msg","msg":"tritium: We have all those patches in our 2.6.15"},{"t":"12:09","nick":"mdz","type":"msg","msg":"ajmitch: is there something in particular you're planning for -updates?"},{"t":"12:09","nick":"ajmitch","type":"msg","msg":"f-spot patches from upstream"},{"t":"12:09","nick":"mdz","type":"msg","msg":"Seveas: tomorrow"},{"t":"12:10","nick":"mdz","type":"msg","msg":"UTC"},{"t":"12:10","nick":"Seveas","type":"msg","msg":"mdz, I was hoping for a bit more specific timestamp ;)"},{"t":"12:10","nick":"mdz","type":"msg","msg":"any particular reason?"},{"t":"12:11","nick":"BenC","type":"msg","msg":"a day and a TZ, what more could you ask for? :)"},{"t":"12:11","nick":"Seveas","type":"msg","msg":"#ubuntu gets swamped with that question over and over"},{"t":"12:11","nick":"Seveas","type":"msg","msg":"something like \"not before noon\" would already be useful"},{"t":"12:12","nick":"ajmitch","type":"msg","msg":"Seveas: then say the end of the day or something, so they don't get their hopes up"},{"t":"12:12","nick":"mdke","type":"msg","msg":"tell them to update now"},{"t":"12:12","nick":"Seveas","type":"msg","msg":"ajmitch, hehe"},{"t":"12:12","nick":"mdke","type":"msg","msg":"and grab the cd on friday"},{"t":"12:12","nick":"mdz","type":"msg","msg":"Seveas: and you think that if one of them gets an answer, the rest will go away? ;-)"},{"t":"12:12","nick":"mdz","type":"msg","msg":"Seveas: morning or midday, most likely"},{"t":"12:13","nick":"Seveas","type":"msg","msg":"Fridge says 0:00 UTC so lots of people think it'll be in 48 minutes"},{"t":"12:13","nick":"Seveas","type":"msg","msg":""},{"t":"12:13","nick":"sivang","type":"msg","msg":"hehe"},{"t":"12:13","nick":"ajmitch","type":"msg","msg":"Seveas: excellent, put that forward 24 hours :)"},{"t":"12:13","nick":"sivang","type":"msg","msg":"I think this is one of the nicest things in Ubuntu, we release when we feel it's right :)"},{"t":"12:14","nick":"AlinuxOS","type":"msg","msg":"sivang, I agree... it's true."},{"t":"12:14","nick":"BenC","type":"msg","msg":"wasn't that inherited from Debian? ;)"},{"t":"12:14","nick":"sivang","type":"msg","msg":"well,"},{"t":"12:14","nick":"sivang","type":"msg","msg":"it's a bit better :)"},{"t":"12:14","nick":"infinity","type":"msg","msg":"\"When it's ready -- within a 24 hour window\""},{"t":"12:14","nick":"Seveas","type":"msg","msg":"BenC, no, that would be \"We may release...\""},{"t":"12:14","nick":"AlinuxOS","type":"msg","msg":":)"},{"t":"12:14","nick":"sivang","type":"msg","msg":"we do not need to wait for the \"signs\".. :p"},{"t":"12:15","nick":"mdz","type":"msg","msg":"sivang: Debian releases based on fixed criteria; we release on a target date and select our criteria accordingly"},{"t":"12:15","nick":"BenC","type":"msg","msg":"or a GR"},{"t":"12:15","nick":"mdz","type":"msg","msg":"they're both \"when it's ready\"; we just have different definitions of \"ready\""},{"t":"12:15","nick":"Seveas","type":"msg","msg":"\"When sabdfl presses the ceremonial button\""},{"t":"12:15","nick":"mdz","type":"msg","msg":"there is a magic button in Launchpad now"},{"t":"12:16","nick":"sivang","type":"msg","msg":"mdz: that's what makes it so cool, we have a middle point between top quality and sensible release periods"},{"t":"12:16","nick":"sivang","type":"msg","msg":"magic button for the release? :)"},{"t":"12:16","nick":"AlinuxOS","type":"msg","msg":"mdz, really ? which one ?"},{"t":"12:16","nick":"AlinuxOS","type":"msg","msg":":D"},{"t":"12:17","nick":"sivang","type":"msg","msg":"anyway, back to backup before disk wipe out"},{"t":"12:17","nick":"mdz","type":"msg","msg":"the one which changes the status of Dapper from pre-release freeze to current stable"},{"t":"12:17","nick":"mdz","type":"msg","msg":"I'll press it for the first time tomorrow; this will be the first release we've done on Launchpad"},{"t":"12:18","nick":"AlinuxOS","type":"msg","msg":":) I thougt it's manual change :)"},{"t":"12:18","nick":"mdz","type":"msg","msg":"it is"}]},{"id":"edgy_release","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2006-10-26","topic":"Edgy Eft 6.10 has been released!","vibe":"Edgy Eft 6.10 · 通宵交班 ogra 跟刚起床的 fabbione 打招呼","users":["Vaske_Car","Windkracht8","_ion","agutierr","ajmitch","blueyed","bronson__","cjwatson","fabbione","gnomefreak","ivoks","keescook","ogra","smurf","tfheen","zMott"],"lines":[{"t":"05:07","nick":"bronson__","type":"msg","msg":"Is there an easy way to get rid of *.dpkg *.diff.gz *.changes *.upload *.dsc in my build directory?"},{"t":"05:07","nick":"bronson__","type":"msg","msg":"Just clean things out?"},{"t":"05:07","nick":"bronson__","type":"msg","msg":"Or do all developers set up their own alias for that?"},{"t":"05:07","nick":"bronson__","type":"msg","msg":"I find that once I upload a package, I have no interest in having all that cruft hanging about."},{"t":"05:10","nick":"_ion","type":"msg","msg":"Well, debclean --cleandebs removes *.{deb,changes,build} files from parent directory, but not the rest."},{"t":"05:11","nick":"fabbione","type":"msg","msg":"morning guys"},{"t":"05:11","nick":"ogra","type":"msg","msg":"ugh"},{"t":"05:11","nick":"ogra","type":"msg","msg":"time for bed ... fabbione is up"},{"t":"05:11","nick":"ajmitch","type":"msg","msg":"morning fabbione, ogra "},{"t":"05:20","nick":"bronson__","type":"msg","msg":"_ion: thanks."},{"t":"05:21","nick":"bronson__","type":"msg","msg":"I'm looking at the changelog for the postfix package...  It's got 2.2.2 and 2.2.3 releases interleaved."},{"t":"05:22","nick":"bronson__","type":"msg","msg":"But those releases start with different source bases right?"},{"t":"05:23","nick":"bronson__","type":"msg","msg":"How does the single changelog file get used for different original sources?  Isn't it more convenient just to keep a postfix-2.2.2 build tree and a separate postfix-2.2.3 tree?"},{"t":"05:01","nick":"fabbione","type":"msg","msg":"smurf: my policy is not to edit them..."},{"t":"05:01","nick":"fabbione","type":"msg","msg":"smurf: otherwise it becomes a mess"},{"t":"05:02","nick":"ogra","type":"msg","msg":"sivang, Cyorxamp"},{"t":"05:03","nick":"keescook","type":"msg","msg":"howdy all"},{"t":"05:03","nick":"gnomefreak","type":"msg","msg":"he was taken care of if i understood correctly by staff :)"},{"t":"05:09","nick":"ivoks","type":"msg","msg":"smurf: btw, locobot_3 has wrong URL under ircname"},{"t":"05:10","nick":"smurf","type":"msg","msg":"ivoks: thanks, will fix"},{"t":"05:10","nick":"ivoks","type":"msg","msg":"smurf: it misses 's' :)"},{"t":"05:13","nick":"tfheen","type":"msg","msg":"elmo: thanks."},{"t":"05:31","nick":"agutierr","type":"msg","msg":"hello all. I have a question about preseed. Someone knows how I can preseed security host ?"},{"t":"05:31","nick":"cjwatson","type":"msg","msg":"apt-setup/security_host"},{"t":"05:31","nick":"zMott","type":"msg","msg":"what with all the new mono items "},{"t":"05:32","nick":"zMott","type":"msg","msg":"is this part of the new frame work?"},{"t":"05:48","nick":"Windkracht8","type":"msg","msg":"Hello, does anyone know when qt 4.2 will be available in the Ubuntu repository's?"},{"t":"05:53","nick":"cjwatson","type":"msg","msg":"Windkracht8: it's already there - libqt4-core, libqt4-gui, libqt4-dev, etc."},{"t":"05:53","nick":"cjwatson","type":"msg","msg":"edgy"},{"t":"05:55","nick":"Windkracht8","type":"msg","msg":"cjwatson, but not for dapper"},{"t":"05:56","nick":"cjwatson","type":"msg","msg":"Windkracht8: no"},{"t":"05:56","nick":"cjwatson","type":"msg","msg":"it won't ever be in dapper"},{"t":"05:56","nick":"Vaske_Car","type":"msg","msg":"does anybody know why I get dark background as soon as X start? Turned off PC yesterday normaly and today it does not start.."},{"t":"05:56","nick":"Windkracht8","type":"msg","msg":"I just looked at my mail, I"},{"t":"05:57","nick":"Windkracht8","type":"msg","msg":"'ve got a new mail from ubuntu-announce, looks like I'm updating"},{"t":"06:00","nick":"Windkracht8","type":"msg","msg":"Why aren't we getting free cd's for edgy?"},{"t":"06:00","nick":"blueyed","type":"msg","msg":"Is there a channel for the website? http://www.ubuntu.com/products/GetUbuntu/download?action=show&redirect=download does not work with Konqueror (the javascript click-open part).. :/"}]},{"id":"feisty_release","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2007-04-19","topic":"Entire archive frozen for release | stop asking AWTY","vibe":"Feisty Fawn 7.04 · 频道 topic 锁死, 全员催 ISO","users":["Burgundavia","Mithrandir","Nergar","RenatoSilva","ajmitch","dholbach","fabbione","ion_","micahcowan","tonyyarusso"],"lines":[{"t":"07:04","nick":"Nergar","type":"msg","msg":"please all mighty devs, when will feisty be released???"},{"t":"07:04","nick":"ajmitch","type":"msg","msg":"morning Mithrandir "},{"t":"07:04","nick":"ion_","type":"msg","msg":"Most likely this year."},{"t":"07:05","nick":"Nergar","type":"msg","msg":":("},{"t":"07:06","nick":"Mithrandir","type":"msg","msg":"Nergar: #ubuntu+1 is too boring yet.  It needs to boil first."},{"t":"07:06","nick":"Nergar","type":"msg","msg":"#ubuntu-release-party is getting crazy!"},{"t":"07:09","nick":"dholbach","type":"msg","msg":"good morning"},{"t":"07:10","nick":"ion_","type":"msg","msg":"Hi"},{"t":"07:11","nick":"dholbach","type":"msg","msg":"hi ion_"},{"t":"07:12","nick":"ajmitch","type":"msg","msg":"hey dholbach "},{"t":"07:13","nick":"dholbach","type":"msg","msg":"hi ajmitch"},{"t":"07:13","nick":"micahcowan","type":"msg","msg":"AWTY?"},{"t":"07:13","nick":"Mithrandir","type":"msg","msg":"Are We There Yet"},{"t":"07:13","nick":"dholbach","type":"msg","msg":"hey tollef"},{"t":"07:13","nick":"micahcowan","type":"msg","msg":"(not that any of 'em will actually start bothering to read the topic...)"},{"t":"07:14","nick":"Mithrandir","type":"msg","msg":"morning, Daniel."},{"t":"07:16","nick":"fabbione","type":"msg","msg":"micahcowan: but we can point to it and if it becomes unbearable +m :)"},{"t":"07:27","nick":"tonyyarusso","type":"msg","msg":"dholbach, sabdfl, ajmitch, cjwatson, keescook, mako, mdz, BenC, whomever this is appropriate for:  We have #ubuntu-release-party if someone wants to drop by when the time comes and start the torrenting off with a bang."},{"t":"07:27","nick":"RenatoSilva","type":"msg","msg":"BTW, is there a scheduled TIME?"},{"t":"07:28","nick":"tonyyarusso","type":"msg","msg":"Doubt it"},{"t":"07:28","nick":"ajmitch","type":"msg","msg":"RenatoSilva: when it's ready"},{"t":"07:28","nick":"RenatoSilva","type":"msg","msg":"I guess in London it's 11:28 pm"},{"t":"07:29","nick":"RenatoSilva","type":"msg","msg":"ajmitch: still working on it? :D desperated, making the final refinements? I'm developer, I know how it is :)"},{"t":"07:30","nick":"Mithrandir","type":"msg","msg":"actually, I'm just eating breakfast.  Can't release without breakfast."},{"t":"07:31","nick":"tonyyarusso","type":"msg","msg":"lol, true"},{"t":"07:31","nick":"RenatoSilva","type":"msg","msg":"Mithrandir: uhauahuauahauhahua"},{"t":"07:31","nick":"RenatoSilva","type":"msg","msg":"true"},{"t":"07:31","nick":"Burgundavia","type":"msg","msg":"we need a quotebot"}]},{"id":"hardy_lts","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2008-04-24","topic":"Hardy Heron 8.04 LTS released","vibe":"Hardy Heron 8.04 LTS · Flash + PulseAudio 静音 bug","users":["ScottK","ScottK2","TheMuso","bryce","calc","cjwatson","elmo","jjkbj","pwnguin","ubotu"],"lines":[{"t":"00:22","nick":"elmo","type":"msg","msg":"when you select reboot the system in rescue mode, it just dumps you back into the top level menu"},{"t":"00:23","nick":"elmo","type":"msg","msg":"known bug?  if not, which package should I be looking at, to file a bug on?"},{"t":"00:23","nick":"cjwatson","type":"msg","msg":"known bug, fixed in Debian, we forgot to do the sync after RC, will fix for 8.04.1"},{"t":"00:23","nick":"elmo","type":"msg","msg":"k, thx"},{"t":"00:23","nick":"cjwatson","type":"msg","msg":"bug 218549"},{"t":"00:23","nick":"ubotu","type":"msg","msg":"Launchpad bug 218549 in rescue \"Choosing \"Reboot\" in rescue menu jumps to main menu -- sync rescue from Debian\" [Medium,Fix committed] https://launchpad.net/bugs/218549"},{"t":"00:35","nick":"jjkbj","type":"msg","msg":"hi"},{"t":"00:57","nick":"ScottK","type":"msg","msg":"bryce: Would you have a moment to help me with a release note about multi-monitor support for Kubuntu?  As I understand it with displayconfig all we have is xinerama and that's not so much supported.  If you can give me a few hints, I can make it sound nice."},{"t":"00:57","nick":"bryce","type":"msg","msg":"ScottK: sure"},{"t":"00:57","nick":"ScottK","type":"msg","msg":"Thanks."},{"t":"00:57","nick":"bryce","type":"msg","msg":"ScottK: I'm not totally up on where Kubuntu is with xrandr support, but I recall seeing some KDE screenshots that seemed to provide xrandr 1.2 options - is that correct?"},{"t":"00:58","nick":"ScottK","type":"msg","msg":"For KDE3 we have what displayconfig provides (I assume kde/gtk would be the same)."},{"t":"00:58","nick":"bryce","type":"msg","msg":"displayconfig uses guidance for its backend, which only supports Xinerama.  I'm not sure if xrandr got added in at a higher level"},{"t":"00:59","nick":"ScottK","type":"msg","msg":"KDE4 has some kind of xrandr tool, but not AFAIK kde3."},{"t":"00:59","nick":"bryce","type":"msg","msg":"ScottK: ah, ok.  for G/Ubuntu we're deprecating our displayconfig-gtk in favor of gnome's Screen Resolution tool, which is xrandr-based."},{"t":"01:00","nick":"ScottK","type":"msg","msg":"Right, so if you can help me describe the displayconfig situation, that's what I need."},{"t":"01:00","nick":"ScottK","type":"msg","msg":"I know little about X.  I mostly made displayconfig and the back end crash less."},{"t":"01:01","nick":"ScottK","type":"msg","msg":"Is there a subset of users that Xinerama will continue to work for?"},{"t":"01:01","nick":"bryce","type":"msg","msg":"ScottK: ok, so the current situation for you is that for most video drivers, dual screen can be set up only via the 'xrandr' command line tool and/or manual xorg.conf settings"},{"t":"01:01","nick":"ScottK","type":"msg","msg":"OK."},{"t":"01:02","nick":"bryce","type":"msg","msg":"ScottK: the Screen Resolution tool we're adding for Ubuntu relies on gnome-settings-daemon to do the heavy work, which kubuntu would not be using, so that tool would not be of use to kubuntu users"},{"t":"01:02","nick":"ScottK","type":"msg","msg":"Right."},{"t":"01:03","nick":"bryce","type":"msg","msg":"(something I'm fairly bummed about, but since this was RedHat's work for the most part, I didn't really have much influence on that)"},{"t":"01:03","nick":"ScottK","type":"msg","msg":"I was hoping to be able to say something like, If you have blank types of video then Xinerama will still work and you can use Display and Monitor (displayconfig) otherwise you have to do ..."},{"t":"01:04","nick":"ScottK","type":"msg","msg":"KDE4 has at least a basic xrandr tool, but I haven't used it."},{"t":"01:04","nick":"bryce","type":"msg","msg":"the binary drivers (-nvidia and -fglrx) may still support Xinerama."},{"t":"01:05","nick":"bryce","type":"msg","msg":"but they have their own multi-screen setup tools, so it would be better to encourage users to use those, than displayconfig anyway"},{"t":"01:05","nick":"ScottK","type":"msg","msg":"OK"},{"t":"01:06","nick":"bryce","type":"msg","msg":"the -nv driver for older model cards still support Xinerama."},{"t":"01:06","nick":"ScottK","type":"msg","msg":"OK."},{"t":"01:08","nick":"bryce","type":"msg","msg":"ScottK: ATI users can go back to Xinerama by installing the old 6.6.3 version of -ati"},{"t":"01:08","nick":"ScottK","type":"msg","msg":"OK."},{"t":"01:08","nick":"ScottK","type":"action","msg":"starts to write something up."},{"t":"01:10","nick":"ScottK","type":"msg","msg":"bryce: BTW, I'd have been totally screwed during this development cycle by fixing displayconfig if not for the xfix option.  Thanks very much for that."},{"t":"01:11","nick":"bryce","type":"msg","msg":"ScottK: for Intel, the legacy -i810 driver supports Xinerama."},{"t":"01:11","nick":"bryce","type":"msg","msg":"sure"},{"t":"01:32","nick":"ScottK","type":"msg","msg":"bryce: What's the official end user type name for the xfix option?"},{"t":"01:32","nick":"bryce","type":"msg","msg":"ogasawara: bug #216927 also sounds like it may be a kernel bug (iwl3945)"},{"t":"01:33","nick":"ubotu","type":"msg","msg":"Launchpad bug 216927 in ubuntu \"mouse & keyboard became suddenly completely unresponsive\" [Undecided,New] https://launchpad.net/bugs/216927"},{"t":"01:33","nick":"bryce","type":"msg","msg":"ScottK, what was the xfix option again?"},{"t":"01:33","nick":"ScottK","type":"msg","msg":"That's the one where you reboot to the 'restore' option and you get the chance to have the system try to fix your broken X automagically"},{"t":"01:34","nick":"bryce","type":"msg","msg":"oh, bulletproof-x?"},{"t":"01:34","nick":"ScottK","type":"msg","msg":"Sounds reasonable."},{"t":"01:34","nick":"bryce","type":"msg","msg":"heh, hadn't heard it described as xfix before"},{"t":"01:34","nick":"ScottK","type":"msg","msg":"That's what it calls itself in the boot menu."},{"t":"01:35","nick":"calc","type":"action","msg":"wants kernel modesetting X, so we can get prettier bootup :)"},{"t":"01:36","nick":"calc","type":"msg","msg":"plus BSOD feature, whee ;-)"},{"t":"01:36","nick":"TheMuso","type":"msg","msg":"calc: hehe"},{"t":"01:37","nick":"calc","type":"msg","msg":"well it will be nice to be able to display the error on the screen instead of just freezing"},{"t":"01:37","nick":"calc","type":"msg","msg":"but it just sounds very funny :)"},{"t":"01:37","nick":"ScottK2","type":"msg","msg":"bryce: Comments on http://paste.ubuntu-nl.org/64162/ please"},{"t":"01:37","nick":"calc","type":"action","msg":"bbl, dinner"},{"t":"01:37","nick":"bryce","type":"msg","msg":"yeah what fedora put out is really more of a proof of concept - it's not even turned on by default.  So I think it has a long way to go before it's useful.  Still cool to see out in the wild though."},{"t":"01:40","nick":"bryce","type":"msg","msg":"ScottK, why don't you leave out the \"Bullet Proof X\" name from that.  That was always just a code name.  If it's called \"xfix\" in the boot menu, that's a better name for it"},{"t":"01:40","nick":"ScottK2","type":"msg","msg":"OK.  It does sound cool though."},{"t":"01:40","nick":"bryce","type":"msg","msg":"also I'm suspicious that xfix may be something completely different from BPX"},{"t":"01:40","nick":"ScottK2","type":"msg","msg":"Up to you."},{"t":"01:40","nick":"ScottK2","type":"msg","msg":"OK."},{"t":"01:40","nick":"bryce","type":"msg","msg":"yeah leave it out..."},{"t":"01:40","nick":"ScottK2","type":"msg","msg":"I'll reboot my other laptop to make sure I have it right."},{"t":"01:44","nick":"ScottK2","type":"msg","msg":"Three cheers for the forced fsck.  It'll be a while."},{"t":"01:44","nick":"ScottK2","type":"msg","msg":"bryce: Any other comments?"},{"t":"01:45","nick":"bryce","type":"msg","msg":"ScottK: just one...  I don't know your feelings on linking to 3rd party websites, but thinkwiki has the best Xrandr 1.2 config guide I've found so far"},{"t":"01:45","nick":"bryce","type":"msg","msg":"http://www.thinkwiki.org/wiki/Xorg_RandR_1.2"},{"t":"01:45","nick":"bryce","type":"msg","msg":"I have on my todo list to set up a Ubuntu guide like that... but haven't done it"},{"t":"01:45","nick":"ScottK2","type":"msg","msg":"I'm all for good information."},{"t":"01:46","nick":"bryce","type":"msg","msg":"Debian has http://wiki.debian.org/XStrikeForce/HowToRandR12 which is good too."},{"t":"01:46","nick":"bryce","type":"msg","msg":"but the thinkwiki site addresses Ubuntu more specifically"},{"t":"01:46","nick":"ScottK2","type":"msg","msg":"It doesn't seem updated for Hardy though."},{"t":"01:47","nick":"pwnguin","type":"msg","msg":"its kinda thinkpad specific too"}]},{"id":"intrepid_release","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2008-10-30","topic":"Intrepid Ibex 8.10 released | don't ask AWTY","vibe":"Intrepid Ibex 8.10 · 阿拉斯加小孩故事","users":["Keybuk","StevenK","bokey","cjwatson","cody-somerville","elmo","evand","jdong","lifeless","slangasek"],"lines":[{"t":"04:24","nick":"bokey","type":"msg","msg":"hey guys whats the ETA for intrepid final release?"},{"t":"04:25","nick":"bokey","type":"msg","msg":"need to update the channel topic"},{"t":"04:25","nick":"Keybuk","type":"msg","msg":"bokey: October 30th"},{"t":"04:25","nick":"bokey","type":"msg","msg":"Keybuk: its oct 30th here :P)"},{"t":"04:25","nick":"cody-somerville","type":"msg","msg":"bokey, not everywheres in the world"},{"t":"04:25","nick":"jdong","type":"msg","msg":"it's released when it's released."},{"t":"04:25","nick":"jdong","type":"msg","msg":"how's that?"},{"t":"04:26","nick":"bokey","type":"msg","msg":"i know cody-somerville just asking the ETA"},{"t":"04:26","nick":"Keybuk","type":"msg","msg":"bokey: and it will be October 30th somewhere for at least the next 32 hours"},{"t":"04:26","nick":"bokey","type":"msg","msg":"Keybuk: any specific time?"},{"t":"04:26","nick":"Keybuk","type":"msg","msg":"bokey: no, there is no specific time"},{"t":"04:26","nick":"elmo","type":"msg","msg":"can we have a FAQ page for this?"},{"t":"04:26","nick":"bokey","type":"msg","msg":"Keybuk: okie then"},{"t":"04:26","nick":"cody-somerville","type":"msg","msg":"bokey, Please see #ubuntu-release-party"},{"t":"04:26","nick":"Keybuk","type":"msg","msg":"bokey: if you need the toilet, or to eat, of drink, I would recommend that you go now"},{"t":"04:27","nick":"Keybuk","type":"msg","msg":"rather than waiting for the release"},{"t":"04:27","nick":"bokey","type":"msg","msg":"lmao :P)"},{"t":"04:27","nick":"cjwatson","type":"msg","msg":"bokey: the release team will update the topic at the appropriate time"},{"t":"04:31","nick":"bokey","type":"msg","msg":"thanks Keybuk cjwatson for all canonical/ubuntu/debian devs for yet another distro!"},{"t":"04:31","nick":"slangasek","type":"msg","msg":"yes, don't be like the kid in Alaska who got permission during the 8.04 release to stay up until 4am"},{"t":"04:32","nick":"bokey","type":"msg","msg":"s/for/and/g :P)"},{"t":"04:32","nick":"bokey","type":"msg","msg":"see yaa all when it gets released.. i'll hear the noise ;)"},{"t":"04:33","nick":"jdong","type":"action","msg":"watches slangasek count to 10 and push the big RELEASE button"},{"t":"04:34","nick":"Keybuk","type":"action","msg":"watches slangasek count to 10 in base 1,000,000"},{"t":"04:34","nick":"StevenK","type":"msg","msg":"Which is the same as counting 1 to 10 in base 10"},{"t":"04:34","nick":"Keybuk","type":"msg","msg":"no, it's really not"},{"t":"04:34","nick":"StevenK","type":"msg","msg":"Oh, duh"},{"t":"04:35","nick":"Keybuk","type":"msg","msg":"math, hard"},{"t":"04:35","nick":"StevenK","type":"msg","msg":"Yup"},{"t":"04:35","nick":"Keybuk","type":"msg","msg":"and you're awake in your _own_ timezone!"},{"t":"04:36","nick":"slangasek","type":"action","msg":"grins"},{"t":"04:39","nick":"lifeless","type":"msg","msg":"perhaps chinese has enough characters"},{"t":"04:42","nick":"StevenK","type":"action","msg":"tries to debug \"X: client 1 rejected from local host\""},{"t":"05:02","nick":"jdong","type":"msg","msg":"evand: oh I see what you did there."},{"t":"05:03","nick":"jdong","type":"action","msg":"hugs /etc/squid/rickroll.acl"},{"t":"05:04","nick":"evand","type":"msg","msg":";)"}]},{"id":"lucid_lts","server":"irc.freenode.net","channel":"#ubuntu-devel","date":"2010-04-29","topic":"Lucid Lynx 10.04 LTS released | LTS 5 years on server","vibe":"Lucid Lynx 10.04 LTS · 已现代化的 release 工程","users":["Aquina","JanC","Keybuk","Nafai","TheMuso","ajmitch","imbrandon","jpds","lifeless","mdeslaur","soren","svu","ubottu","xnox","zul"],"lines":[{"t":"00:00","nick":"svu","type":"msg","msg":"JanC, :) I feel sorry that Ubuntu does not have Jobs-like kharismatic person to make ANNOUNCES."},{"t":"00:00","nick":"Aquina","type":"msg","msg":"Oh yeah... rally!? :-)"},{"t":"00:00","nick":"soren","type":"msg","msg":"Aquina: Yes, so within the next thirtysomething hours."},{"t":"00:01","nick":"Aquina","type":"msg","msg":"I think it was a bit less time between RC and final. Only a few days..."},{"t":"00:02","nick":"JanC","type":"msg","msg":"you mean, somebody who publicly says his companie releases lots of crappy software?  ;-)"},{"t":"00:02","nick":"JanC","type":"msg","msg":"company"},{"t":"00:02","nick":"JanC","type":"msg","msg":"I doubt sabdfl wants to do that  :P"},{"t":"00:02","nick":"svu","type":"msg","msg":"JanC, yes. But does that in style! :)"},{"t":"00:04","nick":"xnox","type":"msg","msg":"oh it's release day =) forgot about that =)"},{"t":"00:04","nick":"JanC","type":"msg","msg":"well, \"day\""},{"t":"00:04","nick":"JanC","type":"msg","msg":"\"while it's 2010-04-29 in some place on Earth\" spans almost 2 days  ;)"},{"t":"00:08","nick":"Aquina","type":"msg","msg":"Am I the only person calculating to figure out whether these are 2 days or almost 2 days... :D"},{"t":"00:08","nick":"Keybuk","type":"msg","msg":"it's more than 2 days"},{"t":"00:08","nick":"Keybuk","type":"msg","msg":"52 hours iirc"},{"t":"00:09","nick":"svu","type":"msg","msg":"51:59:59 I guess"},{"t":"00:12","nick":"Keybuk","type":"msg","msg":"it's an illogical number due to daylight savings"},{"t":"00:13","nick":"lifeless","type":"msg","msg":"also there are more than 24 time zones"},{"t":"00:13","nick":"ajmitch","type":"msg","msg":"a shame I'm only on UTC+12 at the moment"},{"t":"00:13","nick":"Keybuk","type":"msg","msg":"yeah, but you can end up with UTC+13 and UTC-13 depending on hemisphere ;)"},{"t":"00:14","nick":"lifeless","type":"msg","msg":"more than"},{"t":"00:14","nick":"lifeless","type":"msg","msg":"there is that weird little kink in the north pacific"},{"t":"00:14","nick":"ajmitch","type":"msg","msg":"there's a +14, I think"},{"t":"00:14","nick":"xnox","type":"msg","msg":"silly politics"},{"t":"00:14","nick":"xnox","type":"msg","msg":"imho we relase in UTC"},{"t":"00:15","nick":"lifeless","type":"msg","msg":"rawaki is +13 normally"},{"t":"00:15","nick":"lifeless","type":"msg","msg":"and tonga"},{"t":"00:16","nick":"Keybuk","type":"msg","msg":"xnox: your opinion is neither humble or correct ;-)"},{"t":"00:17","nick":"lifeless","type":"msg","msg":"Kiritimati is +14"},{"t":"00:17","nick":"lifeless","type":"msg","msg":"wikipedia ftw"},{"t":"00:17","nick":"xnox","type":"action","msg":"sticks his tongue out at Keybuk =) I can pretend whatever I want =)"},{"t":"00:17","nick":"xnox","type":"msg","msg":"BTW I knew there is +13 but I never thought there is +14"},{"t":"00:18","nick":"ajmitch","type":"msg","msg":"there are odd timezones like +13:45"},{"t":"00:20","nick":"ajmitch","type":"action","msg":"is glad that the NZ mirrors don't lag too far behind this week"},{"t":"00:20","nick":"jpds","type":"action","msg":"is glad that some NZ mirrors get pushed."},{"t":"00:21","nick":"lifeless","type":"action","msg":"offers a Tool"},{"t":"00:21","nick":"Aquina","type":"msg","msg":"Yeah +14 exists, but isn't the calculation 12+14+23=49hrs == max time of same weekday?"},{"t":"00:21","nick":"lifeless","type":"msg","msg":"and hell, I'm in NZ now."},{"t":"00:21","nick":"lifeless","type":"msg","msg":"Aquina: 49:59:59"},{"t":"00:21","nick":"ajmitch","type":"msg","msg":"lifeless: I'm sure you enjoy the blazing speeds to archive.ubuntu.com then"},{"t":"00:22","nick":"Aquina","type":"msg","msg":"ah ok"},{"t":"00:22","nick":"lifeless","type":"msg","msg":"ajmitch: it took me a day to update after crossing the tasman. OUCH."},{"t":"00:22","nick":"lifeless","type":"msg","msg":"ajmitch: OTOH I think telecom are doing some stupid shite"},{"t":"00:22","nick":"ajmitch","type":"msg","msg":"that wouldn't surprise me"},{"t":"00:22","nick":"lifeless","type":"msg","msg":"not my phone line, sadly"},{"t":"00:23","nick":"lifeless","type":"msg","msg":"so I can't really dig in deeply to fix"},{"t":"00:23","nick":"imbrandon","type":"msg","msg":"dont the ISP's down there run their own mirrors too mostly ?"},{"t":"00:24","nick":"ajmitch","type":"msg","msg":"yes, which is why I was glad that they're not too far behind, sometimes they've been out of date by a few days"},{"t":"00:24","nick":"zul","type":"msg","msg":"aussies and kiwis are weird"},{"t":"00:24","nick":"imbrandon","type":"msg","msg":"ajmitch, ouch"},{"t":"00:24","nick":"ajmitch","type":"msg","msg":"says the canadian"},{"t":"00:25","nick":"lifeless","type":"msg","msg":"ajmitch: do you know why they have been that out of date?"},{"t":"00:25","nick":"imbrandon","type":"msg","msg":"their has to be a way to my my gnome-xchat ignore joins/parts when its running on my irssi proxy ...."},{"t":"00:25","nick":"ajmitch","type":"msg","msg":"lifeless: no I don't, someone was talking about it in #ubuntu-nz recently though"},{"t":"00:26","nick":"imbrandon","type":"msg","msg":"ajmitch, yea i rember TheMuso saying something along those lines, i think thats one reason he runs a local mirror"},{"t":"00:26","nick":"imbrandon","type":"msg","msg":"iirc"},{"t":"00:27","nick":"lifeless","type":"msg","msg":"imbrandon: themuso is in .au, totally different internet landscape"},{"t":"00:27","nick":"imbrandon","type":"msg","msg":"yea but much of the same fundimental issues as far as limited bandwidth accross the ocean and such isnt it"},{"t":"00:28","nick":"TheMuso","type":"msg","msg":"imbrandon: Yeah that, and distro development is easier when you have the most recent published packages, so I have less breakage during the day when I need to test/update/test build something."},{"t":"00:29","nick":"imbrandon","type":"msg","msg":"ahh right because bandwidth is cheaper at off peak hours or something like there isnt it"},{"t":"00:29","nick":"imbrandon","type":"msg","msg":"( when you mirror )"},{"t":"00:30","nick":"TheMuso","type":"msg","msg":"Depends on the ISP you are with. Some offer off peak quotas, and some don't. I don't like off peak quotas myself."},{"t":"00:31","nick":"imbrandon","type":"msg","msg":"yea always seemed kinda wonky to me too, but i like in the US so its QUITE diffrent here than alot of the world ( for better or worse )"},{"t":"00:31","nick":"imbrandon","type":"msg","msg":"s/like/live"},{"t":"00:31","nick":"mdeslaur","type":"msg","msg":"Nafai: it's really curious that you can't reproduce bug #570809...I wonder what I could be doing different"},{"t":"00:31","nick":"ubottu","type":"msg","msg":"Launchpad bug 570809 in netbook-launcher \"Favorites displays application short names\" [Undecided,Incomplete] https://launchpad.net/bugs/570809"},{"t":"00:32","nick":"Nafai","type":"msg","msg":"mdeslaur: yeah, that is curious.  I did this all in KVM, but I can't imagine this would be any different"},{"t":"00:32","nick":"Nafai","type":"msg","msg":"mdeslaur: What language/locale are you using?"},{"t":"00:32","nick":"mdeslaur","type":"msg","msg":"Nafai: let me try again on an hp mini"},{"t":"00:33","nick":"mdeslaur","type":"msg","msg":"Nafai: well, the live cd doesn't ask for a language/locale"},{"t":"00:33","nick":"Nafai","type":"msg","msg":"right"}]},{"id":"fedora_kde_sig","server":"irc.freenode.net","channel":"#fedora-meeting","date":"2009-11-10","topic":"Fedora KDE SIG Meeting | F12 just went gold!","vibe":"Fedora 12 KDE SIG 庆祝会 · jreznik 开香槟","users":["Kevin_Kofler","SMParrish","heliocastro","jreznik","ltinkl","rdieter","svahl","than","zodbot"],"lines":[{"t":"14:02","nick":"rdieter","type":"msg","msg":"#startmeeting KDE SIG Meeting -- http://fedoraproject.org/wiki/SIGs/KDE/Meetings/2009-11-10"},{"t":"14:02","nick":"zodbot","type":"msg","msg":"Meeting started Tue Nov 10 14:02:44 2009 UTC.  The chair is rdieter. Information about MeetBot at http://wiki.debian.org/MeetBot."},{"t":"14:02","nick":"zodbot","type":"msg","msg":"Useful Commands: #action #agreed #halp #info #idea #link #topic."},{"t":"14:02","nick":"rdieter","type":"msg","msg":"#topic roll call"},{"t":"14:02","nick":"rdieter","type":"msg","msg":"who's present today?"},{"t":"14:03","nick":"Kevin_Kofler","type":"msg","msg":"Present."},{"t":"14:03","nick":"heliocastro","type":"msg","msg":"rdieter: The guest one here"},{"t":"14:03","nick":"svahl","type":"msg","msg":"present"},{"t":"14:03","nick":"rdieter","type":"msg","msg":"heliocastro: welcome!"},{"t":"14:03","nick":"than","type":"action","msg":"is present"},{"t":"14:03","nick":"jreznik","type":"action","msg":"is present"},{"t":"14:04","nick":"ltinkl","type":"action","msg":"is here"},{"t":"14:04","nick":"rdieter","type":"msg","msg":"#topic celebration of f12 going gold"},{"t":"14:05","nick":"Kevin_Kofler","type":"msg","msg":"Hooray! FTW!"},{"t":"14:05","nick":"svahl","type":"msg","msg":":D"},{"t":"14:05","nick":"rdieter","type":"msg","msg":"congrats all around, we've got a good release, stellar artwork, integration, latest kde technologies"},{"t":"14:06","nick":"jreznik","type":"action","msg":"is opening champagne :D"},{"t":"14:06","nick":"ltinkl","type":"msg","msg":"and what's better, F13 looks to be even more promising :)"},{"t":"14:06","nick":"rdieter","type":"msg","msg":"indeed."},{"t":"14:06","nick":"jreznik","type":"msg","msg":"I'm using F12 for some time and it feels like most stable Fedora ever!"},{"t":"14:07","nick":"ltinkl","type":"msg","msg":"I'm going to install it to my brand new work laptop"},{"t":"14:07","nick":"jreznik","type":"msg","msg":"big step from alpha to GA, thanks all!"},{"t":"14:07","nick":"ltinkl","type":"msg","msg":"let's see :)"},{"t":"14:07","nick":"SMParrish","type":"action","msg":"sorry I'm late but I'm here"},{"t":"14:07","nick":"rdieter","type":"msg","msg":"while, we're at it and celebrating, I'd like to welcome heliocastro , he's landed on using fedora recently, and has graciously offered to join the team soon"},{"t":"14:07","nick":"than","type":"msg","msg":"big thank to all!"},{"t":"14:08","nick":"jreznik","type":"msg","msg":"heliocastro: welcome!"},{"t":"14:08","nick":"svahl","type":"msg","msg":"heliocastro: welcome, too"},{"t":"14:08","nick":"SMParrish","type":"msg","msg":"welcome heliocastro"},{"t":"14:08","nick":"heliocastro","type":"msg","msg":"Thanks all"},{"t":"14:08","nick":"Kevin_Kofler","type":"msg","msg":"+1"},{"t":"14:08","nick":"jreznik","type":"msg","msg":"some teams are fighting with community, some teams are growing! great"},{"t":"14:08","nick":"ltinkl","type":"msg","msg":"I'd also wanted to point out (and thank the whole KDE team) that what we ship is already quite stable"},{"t":"14:09","nick":"ltinkl","type":"action","msg":"joins and welcomes helio"},{"t":"14:09","nick":"ltinkl","type":"msg","msg":"heliocastro: hi mate :)"},{"t":"14:09","nick":"rdieter","type":"msg","msg":"heliocastro: could you introduce yourself (if you don't mind), give a little background for folks not already familiar with your kde/mandriva contributions?"},{"t":"14:09","nick":"than","type":"msg","msg":"welcome heliocastro"},{"t":"14:09","nick":"heliocastro","type":"msg","msg":"ok, simple introduction"},{"t":"14:09","nick":"heliocastro","type":"msg","msg":"10,5 years in conectiva/mandriva"},{"t":"14:10","nick":"heliocastro","type":"msg","msg":"been kde lead pacakger ther for 8 years"},{"t":"14:10","nick":"heliocastro","type":"msg","msg":"stubborn as hell"},{"t":"14:10","nick":"rdieter","type":"action","msg":"wows, lols"},{"t":"14:10","nick":"heliocastro","type":"msg","msg":"kde devel for long time too, kmix, arrk, etc.."},{"t":"14:10","nick":"ltinkl","type":"msg","msg":"I've known helio for like 8 years, he will be a great addition to our team :)"},{"t":"14:11","nick":"heliocastro","type":"msg","msg":"and now i'm working to Collabora in *projects* and since i decided to use fedora for change reasons i was thinking in help some in free time"},{"t":"14:11","nick":"heliocastro","type":"msg","msg":"That's pretty much describe introduction"},{"t":"14:12","nick":"rdieter","type":"msg","msg":"ok, excellent.  again, welcome."},{"t":"14:12","nick":"jreznik","type":"msg","msg":"impressive ;-)"},{"t":"14:12","nick":"svahl","type":"msg","msg":"yeah, nice to have you onboard :)"},{"t":"14:12","nick":"rdieter","type":"msg","msg":"#info: introduce and welcome heliocastro"},{"t":"14:13","nick":"rdieter","type":"msg","msg":"ok, enough partying, let's get back to work. :)"},{"t":"14:13","nick":"rdieter","type":"msg","msg":"#topic kde-4.3.3 status"},{"t":"14:13","nick":"rdieter","type":"msg","msg":"ltinkl: ?"},{"t":"14:13","nick":"ltinkl","type":"msg","msg":"yup"},{"t":"14:14","nick":"ltinkl","type":"msg","msg":"KDE 4.3.3 is imported into CVS for Fedora 10/11"},{"t":"14:14","nick":"ltinkl","type":"msg","msg":"F12 is being worked on right now"},{"t":"14:14","nick":"ltinkl","type":"msg","msg":"once I'm done with CVS, I'll launch the builds"},{"t":"14:14","nick":"rdieter","type":"action","msg":"can serve as tagbot"},{"t":"14:15","nick":"ltinkl","type":"msg","msg":"that's about it :)"},{"t":"14:15","nick":"ltinkl","type":"msg","msg":"oh, I also imported a patch to kdenetwork to make it compilable against the new webkitkde"},{"t":"14:15","nick":"rdieter","type":"msg","msg":"one thing to consider, with f10 so close to eol, do we still want to push kde-4.3.3 there?"},{"t":"14:15","nick":"Kevin_Kofler","type":"msg","msg":"Yes."},{"t":"14:16","nick":"ltinkl","type":"msg","msg":"rdieter: I'd tend to say yes"},{"t":"14:16","nick":"rdieter","type":"action","msg":"is on the fence"},{"t":"14:16","nick":"ltinkl","type":"msg","msg":"let's make it the last update, 4.3.3 and finito"},{"t":"14:16","nick":"svahl","type":"msg","msg":"+1"},{"t":"14:16","nick":"ltinkl","type":"msg","msg":"besides, it's already done :)"},{"t":"14:16","nick":"jreznik","type":"msg","msg":"is it allowed to have something in updates-testing in F10 and after eol push it to stable?"},{"t":"14:16","nick":"rdieter","type":"msg","msg":"not after eol"},{"t":"14:17","nick":"jreznik","type":"msg","msg":"(or I hope it will go to updates-testing first)"}]},{"id":"openstack_launch","server":"irc.freenode.net","channel":"#openstack","date":"2010-07-19","topic":"OpenStack: Open Cloud | Launched today by Rackspace & NASA","vibe":"OpenStack 发布当晚 · Rackspace+NASA 上 Hacker News","users":["_0x44","antonym","creiht","greenisus","lbieber","mtaylor","seats","toddmorey"],"lines":[{"t":"04:10","nick":"creiht","type":"msg","msg":"hah"},{"t":"04:11","nick":"antonym","type":"msg","msg":"looks like todd fixed the links"},{"t":"04:12","nick":"creiht","type":"msg","msg":"cool"},{"t":"04:13","nick":"creiht","type":"msg","msg":"http://www.readwriteweb.com/cloud/2010/07/openstack-rackspace-and-nasa-n.php"},{"t":"04:13","nick":"lbieber","type":"msg","msg":"http://trends.ellerdale.com/etc/search?q=OpenStack"},{"t":"04:14","nick":"creiht","type":"msg","msg":"nice"},{"t":"04:19","nick":"creiht","type":"msg","msg":"mtaylor: we should add a link to the docs at swift.openstack.org on the swift launchpad page"},{"t":"04:20","nick":"mtaylor","type":"msg","msg":"creiht: yes"},{"t":"04:20","nick":"creiht","type":"msg","msg":"is there a way I can edit that page?"},{"t":"04:20","nick":"mtaylor","type":"msg","msg":"creiht: you should be able to"},{"t":"04:20","nick":"creiht","type":"msg","msg":"and should we really point to the wiki?"},{"t":"04:20","nick":"mtaylor","type":"msg","msg":"creiht: \"Change Details\""},{"t":"04:20","nick":"lbieber","type":"msg","msg":"mtaylor: and on the nova page as well"},{"t":"04:21","nick":"creiht","type":"msg","msg":"since a. it is completly open and b. it is a little of a mess at the moment"},{"t":"04:21","nick":"creiht","type":"action","msg":"doesn't see a \"Change Details\""},{"t":"04:21","nick":"mtaylor","type":"msg","msg":"creiht: I recommend putting links and stuff in the description section..."},{"t":"04:21","nick":"mtaylor","type":"msg","msg":"hrm"},{"t":"04:21","nick":"mtaylor","type":"msg","msg":"ah."},{"t":"04:21","nick":"mtaylor","type":"msg","msg":"hang on"},{"t":"04:21","nick":"creiht","type":"msg","msg":"I have change details for swift-core"},{"t":"04:21","nick":"creiht","type":"msg","msg":"cool"},{"t":"04:22","nick":"mtaylor","type":"msg","msg":"creiht: you should have it for swift now"},{"t":"04:22","nick":"mtaylor","type":"msg","msg":"lbieber: can you do it for nova?"},{"t":"04:22","nick":"creiht","type":"msg","msg":"cool thanks"},{"t":"04:22","nick":"lbieber","type":"msg","msg":"mtaylor:  sure"},{"t":"04:22","nick":"mtaylor","type":"msg","msg":"lbieber: thanks"},{"t":"04:28","nick":"greenisus","type":"msg","msg":"we're now #2 on hacker news: news.ycombinator.com"},{"t":"04:29","nick":"creiht","type":"msg","msg":"and #4"},{"t":"04:29","nick":"_0x44","type":"msg","msg":"#2 and #3 now"},{"t":"04:32","nick":"creiht","type":"msg","msg":"there are a lot of funky ?'s on the faq page"},{"t":"04:32","nick":"creiht","type":"msg","msg":"http://openstack.org/projects/openstack-faq/"},{"t":"04:32","nick":"creiht","type":"msg","msg":"�"},{"t":"04:33","nick":"mtaylor","type":"msg","msg":"creiht: that sounds like an encoding problem and/or an encoding declaration problem"},{"t":"04:33","nick":"creiht","type":"msg","msg":"The \"Who has contributed?\" question has an incomplete sentence for an answer"},{"t":"04:34","nick":"mtaylor","type":"action","msg":"cries a little bit that the hackers are finding english errors"},{"t":"04:34","nick":"creiht","type":"msg","msg":"haha"},{"t":"04:34","nick":"lbieber","type":"msg","msg":"mtaylor:  are you requesting the swift mailing list on launchpad?"},{"t":"04:35","nick":"mtaylor","type":"msg","msg":"lbieber: yes. spm is working on it"},{"t":"04:35","nick":"lbieber","type":"msg","msg":"mtaylor:   Thanks!"},{"t":"04:37","nick":"creiht","type":"msg","msg":"toddmorey: howdy!"},{"t":"04:37","nick":"lbieber","type":"msg","msg":"ozone team needs to subscribe to https://launchpad.net/~nova/+mailing-list-subscribers if they haven't already"},{"t":"04:38","nick":"creiht","type":"msg","msg":"toddmorey: the faq page has weird ? symbols on it"},{"t":"04:38","nick":"lbieber","type":"msg","msg":"toddmorey:   watch out, you are about to get an onslaught of requests :)"},{"t":"04:38","nick":"toddmorey","type":"msg","msg":"howdy!"},{"t":"04:38","nick":"creiht","type":"msg","msg":"haha"},{"t":"04:38","nick":"creiht","type":"msg","msg":"seats: !!!"},{"t":"04:38","nick":"toddmorey","type":"msg","msg":"I'm sure I am. :) Bring 'em on!"},{"t":"04:38","nick":"creiht","type":"msg","msg":"toddmorey: The \"Who has contributed?\" question has an incomplete sentence for an answer"},{"t":"04:38","nick":"antonym","type":"msg","msg":"seats: oh hai"},{"t":"04:38","nick":"lbieber","type":"msg","msg":"toddmorey:  Remove \"San Antonio, Texas\" from the job description for the Community Manager, it can be any location"},{"t":"04:38","nick":"seats","type":"msg","msg":"creiht, howdy"},{"t":"04:38","nick":"seats","type":"msg","msg":"hey ant"},{"t":"04:39","nick":"_0x44","type":"msg","msg":"Hey seats"},{"t":"04:39","nick":"antonym","type":"msg","msg":"how's it going?"},{"t":"04:39","nick":"creiht","type":"msg","msg":"<- chuck"},{"t":"04:39","nick":"creiht","type":"msg","msg":":)"},{"t":"04:39","nick":"seats","type":"msg","msg":"thier, i got the backward name"},{"t":"04:39","nick":"mtaylor","type":"msg","msg":"lbieber: well, any location except for washington"},{"t":"04:39","nick":"mtaylor","type":"msg","msg":":("},{"t":"04:39","nick":"creiht","type":"msg","msg":"hehe"},{"t":"04:39","nick":"lbieber","type":"msg","msg":"mtaylor:  :( :("},{"t":"04:39","nick":"seats","type":"msg","msg":"just dropping in to lurk"},{"t":"04:39","nick":"creiht","type":"msg","msg":"http://thenextweb.com/us/2010/07/19/rackspace-issues-a-challenge-to-the-cloud-industry-goes-open-source-with-openstack/"},{"t":"04:41","nick":"toddmorey","type":"msg","msg":"lbieber: done!"},{"t":"04:44","nick":"lbieber","type":"msg","msg":"toddmorey:  Thanks!   Did you put in the \"How to Contribute\" section on openstack.org, I can't seem to find it."},{"t":"04:45","nick":"lbieber","type":"msg","msg":"toddmorey: its on the wiki at http://wiki.openstack.org/HowToContribute"},{"t":"04:45","nick":"toddmorey","type":"msg","msg":"That was certainly a positive writeup on thenextweb"},{"t":"04:45","nick":"creiht","type":"msg","msg":"yeah... overall pretty decent press"},{"t":"04:46","nick":"mtaylor","type":"msg","msg":"anybody with blogs ... please add yourself to planet.openstack.org"},{"t":"04:46","nick":"toddmorey","type":"msg","msg":"lbieber: there's a link to that very page in the second box at the top of the community page"}]}];
+
+// ============================================================
+// 状态
+// ============================================================
+const STORE = 'noclip-irc-v1';
+let currentSession = null;
+let playState = { i: 0, playing: true, speed: 1.0, timer: null };
+
+// 仪式 → 选频道 → 回放
+function init() {
+  document.getElementById('guest-id').textContent = Math.floor(Math.random() * 9000 + 1000);
+  // 仪式 3 行依次淡入
+  [1,2,3,4].forEach(i => setTimeout(() => {
+    document.getElementById('r'+i).style.opacity = 1;
+  }, i * 700));
+  // 3.5s 后进选频道
+  setTimeout(showPicker, 3700);
+}
+
+function showPicker() {
+  document.getElementById('ritual').classList.add('hide');
+  document.getElementById('picker-screen').classList.remove('hidden');
+  const grid = document.getElementById('channels');
+  grid.innerHTML = SESSIONS.map((s, i) => `
+    <div class="channel-card" onclick="loadSession(${i})">
+      <div class="chan">${s.channel}</div>
+      <div class="date">${s.server} · ${s.date}</div>
+      <div class="vibe">${s.vibe}</div>
+    </div>
+  `).join('');
+}
+
+function loadSession(idx) {
+  currentSession = SESSIONS[idx];
+  document.getElementById('picker-screen').classList.add('hidden');
+  document.getElementById('mirc-screen').classList.remove('hidden');
+  document.getElementById('title-channel').textContent = currentSession.channel;
+  document.getElementById('topic').textContent = currentSession.topic;
+  renderServerTree();
+  renderUserList();
+  startPlayback();
+}
+
+function renderServerTree() {
+  const tree = document.getElementById('server-tree');
+  tree.innerHTML = `
+    <div class="tree-node server"><span class="tree-toggle">▼</span>📡 ${currentSession.server}</div>
+    <div class="tree-node channel active"><span class="tree-toggle">·</span># ${currentSession.channel.replace(/^#+/, '')}</div>
+    <div class="tree-node channel"><span class="tree-toggle">·</span># status</div>
+  `;
+}
+
+function renderUserList() {
+  const list = document.getElementById('user-list');
+  const users = currentSession.users || [];
+  const ops = users.filter(u => u.startsWith('@')).map(u => ({nick: u.slice(1), kind: 'op'}));
+  const voices = users.filter(u => u.startsWith('+')).map(u => ({nick: u.slice(1), kind: 'voice'}));
+  const normals = users.filter(u => !u.startsWith('@') && !u.startsWith('+')).map(u => ({nick: u, kind: 'normal'}));
+  const all = [...ops, ...voices, ...normals];
+  list.innerHTML = `<div class="header">${all.length} users</div>` +
+    all.map(u => `<div class="user ${u.kind}">${u.nick}</div>`).join('');
+}
+
+function nickColor(nick) {
+  let h = 0;
+  for (const c of nick) h = (h * 31 + c.charCodeAt(0)) % 12;
+  return 'nick-c' + h;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+
+function renderLine(line) {
+  const ts = `<span class="ts">[${line.t}]</span>`;
+  if (line.type === 'sys') {
+    return `<div class="line msg-sys">${ts} ${escapeHtml(line.msg)}</div>`;
+  }
+  if (line.type === 'action') {
+    return `<div class="line msg-action">${ts} * <b class="${nickColor(line.nick)}">${escapeHtml(line.nick)}</b> ${escapeHtml(line.msg)}</div>`;
+  }
+  if (line.type === 'join') {
+    return `<div class="line msg-join">${ts} → ${escapeHtml(line.nick)} has joined ${currentSession.channel}</div>`;
+  }
+  if (line.type === 'part') {
+    return `<div class="line msg-part">${ts} ← ${escapeHtml(line.nick)} has left ${currentSession.channel}</div>`;
+  }
+  // 正常发言
+  return `<div class="line">${ts} <span class="nick-bracket">&lt;</span><span class="nick ${nickColor(line.nick)}">${escapeHtml(line.nick)}</span><span class="nick-bracket">&gt;</span> ${escapeHtml(line.msg)}</div>`;
+}
+
+function startPlayback() {
+  playState = { i: 0, playing: true, speed: 1.0, timer: null };
+  document.getElementById('log').innerHTML = '';
+  scheduleNext();
+}
+
+function scheduleNext() {
+  if (!playState.playing) return;
+  if (playState.i >= currentSession.lines.length) {
+    document.getElementById('toolbar-status').textContent = '● end of log · ESC to exit';
+    return;
+  }
+  const line = currentSession.lines[playState.i];
+  const log = document.getElementById('log');
+  log.insertAdjacentHTML('beforeend', renderLine(line));
+  log.scrollTop = log.scrollHeight;
+  playState.i++;
+  // 默认每行 600-1200ms, 按 speed 缩
+  const delay = (600 + Math.random() * 600) / playState.speed;
+  playState.timer = setTimeout(scheduleNext, delay);
+}
+
+function skipToEnd() {
+  if (playState.timer) clearTimeout(playState.timer);
+  const log = document.getElementById('log');
+  while (playState.i < currentSession.lines.length) {
+    log.insertAdjacentHTML('beforeend', renderLine(currentSession.lines[playState.i]));
+    playState.i++;
+  }
+  log.scrollTop = log.scrollHeight;
+  document.getElementById('toolbar-status').textContent = '● end of log · skipped';
+}
+
+// 任意键加速 (5x)
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { exitRoom(); return; }
+  if (currentSession && playState.playing && playState.speed < 5) {
+    playState.speed = 5;
+    document.getElementById('toolbar-status').textContent = `▶▶ playing · 5x`;
+  }
+});
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'irc-channel' }, '*');
+  } else {
+    if (confirm('/quit · 关闭连接?')) window.close();
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>

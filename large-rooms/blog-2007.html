@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>NetNewsWire 2.1 :: Subscriptions :: 12 unread</title>
+<style>
+/* ============================================================
+   2007 博客圈 · RSS 长读 大房间 v0.1 (skeleton)
+   骨架: NetNewsWire 2007 风 (Mac OS X Tiger/Leopard 时代 RSS 阅读器)
+   配色: 浅灰 + 白底 + Lucida Grande / Helvetica
+   数据: Wayback 验证 2005-2008 博客快照 (调研中)
+   开源参考: NetNewsWire 2007 截图 (现已开源 brentsimmons/NetNewsWire)
+============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Lucida Grande', 'Helvetica Neue', Helvetica, Arial, '苹方 SC', sans-serif;
+  background: #d6d6d6;
+  color: #1a1a1a;
+  font-size: 13px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.nnw-window {
+  background: #ededed;
+  border: 1px solid #999;
+  height: calc(100vh - 16px);
+  margin: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Mac 风窗口顶栏 */
+.title-bar {
+  background: linear-gradient(180deg, #ebebeb 0%, #d4d4d4 100%);
+  border-bottom: 1px solid #999;
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  border-radius: 6px 6px 0 0;
+}
+.traffic-lights {
+  display: flex;
+  gap: 6px;
+}
+.tl {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+.tl.red { background: linear-gradient(180deg,#ff8a80,#e64a3f); }
+.tl.yellow { background: linear-gradient(180deg,#ffd460,#e2a82a); }
+.tl.green { background: linear-gradient(180deg,#80ff8a,#3fbf4f); }
+.title-bar .title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* 工具栏 */
+.toolbar {
+  background: linear-gradient(180deg, #f5f5f5 0%, #e0e0e0 100%);
+  border-bottom: 1px solid #b0b0b0;
+  padding: 8px 12px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.toolbar button {
+  background: linear-gradient(180deg, #fff 0%, #d8d8d8 100%);
+  border: 1px solid #999;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: #333;
+}
+.toolbar button:hover { background: linear-gradient(180deg, #f0f8ff 0%, #c4d4e8 100%); }
+.toolbar button:active { background: #b0b0b0; }
+.toolbar .search {
+  margin-left: auto;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: #888;
+  width: 180px;
+}
+
+/* 主区域 */
+.main-area {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 220px 340px 1fr;
+  overflow: hidden;
+}
+
+/* 左: 订阅源列表 */
+.subs-pane {
+  background: #dde4ec;
+  border-right: 1px solid #999;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.subs-pane .group {
+  font-size: 11px;
+  color: #777;
+  text-transform: uppercase;
+  padding: 6px 12px 4px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.feed-item {
+  padding: 4px 12px 4px 32px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  position: relative;
+}
+.feed-item:hover { background: #c6d4e2; }
+.feed-item.active { background: #4a7bbe; color: #fff; }
+.feed-item .favicon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  background: #ccc;
+  border-radius: 2px;
+  font-size: 9px;
+  text-align: center;
+  line-height: 14px;
+  font-weight: bold;
+}
+.feed-item.active .favicon { background: rgba(255,255,255,0.3); color: #fff; }
+.feed-item .count {
+  margin-left: auto;
+  background: rgba(0,0,0,0.15);
+  color: #555;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+.feed-item.active .count {
+  background: rgba(255,255,255,0.3);
+  color: #fff;
+}
+
+/* 中: 文章标题列表 */
+.posts-pane {
+  background: #fff;
+  border-right: 1px solid #b0b0b0;
+  overflow-y: auto;
+}
+.post-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e8e8e8;
+  cursor: pointer;
+  user-select: none;
+}
+.post-item:hover { background: #f5f9fd; }
+.post-item.active { background: #4a7bbe; color: #fff; }
+.post-item.read { opacity: 0.6; }
+.post-item .post-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.post-item .post-meta {
+  font-size: 11px;
+  color: #777;
+  display: flex;
+  gap: 8px;
+}
+.post-item.active .post-meta { color: rgba(255,255,255,0.85); }
+
+/* 右: 文章正文 (iframe) */
+.reader-pane {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.reader-header {
+  background: linear-gradient(180deg, #f7f7f7 0%, #eaeaea 100%);
+  border-bottom: 1px solid #ccc;
+  padding: 12px 18px;
+}
+.reader-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.reader-header .meta {
+  font-size: 12px;
+  color: #666;
+}
+.reader-header .meta a { color: #4a7bbe; text-decoration: none; }
+.reader-iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+.reader-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #999;
+  font-style: italic;
+  padding: 40px;
+}
+.reader-empty .icon {
+  font-size: 64px;
+  opacity: 0.2;
+  margin-bottom: 12px;
+}
+
+/* 状态栏 */
+.status-bar {
+  background: linear-gradient(180deg, #eaeaea 0%, #d0d0d0 100%);
+  border-top: 1px solid #999;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: #555;
+  display: flex;
+  justify-content: space-between;
+  border-radius: 0 0 6px 6px;
+}
+
+/* ============================================================
+   订阅仪式 overlay (启动 NNW + 拉 RSS feeds)
+============================================================ */
+#ritual {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #4a6da7 0%, #6d4d9c 100%);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Lucida Grande', sans-serif;
+}
+#ritual.hide { display: none; }
+.ritual-card {
+  background: rgba(255,255,255,0.96);
+  color: #333;
+  border-radius: 10px;
+  padding: 28px 40px;
+  width: 460px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  text-align: center;
+}
+.ritual-card .icon-orange {
+  font-size: 56px;
+  margin-bottom: 10px;
+  color: #ff7920;
+}
+.ritual-card h1 {
+  font-size: 20px;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: #222;
+}
+.ritual-card .sub {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 18px;
+}
+.ritual-card .feed-log {
+  font-family: 'Monaco', 'Lucida Console', monospace;
+  font-size: 11px;
+  color: #555;
+  text-align: left;
+  background: #f3f3f3;
+  padding: 10px 12px;
+  border-radius: 4px;
+  height: 100px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.ritual-card .feed-log .ok { color: #2a7a2a; }
+.ritual-card .progress {
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+.ritual-card .progress > div {
+  height: 100%;
+  background: linear-gradient(90deg, #ff7920, #ff9530);
+  width: 0;
+  animation: fillProgress 4s linear forwards;
+}
+@keyframes fillProgress { to { width: 100%; } }
+
+.hidden { display: none !important; }
+
+.exit-hint {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  font-size: 11px;
+  color: #888;
+  background: #fff;
+  padding: 4px 10px;
+  border: 1px solid #b0b0b0;
+  border-radius: 12px;
+  cursor: pointer;
+  z-index: 100;
+}
+.exit-hint:hover { color: #333; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     仪式: NetNewsWire 启动 + 拉 feeds
+============================================================ -->
+<div id="ritual">
+  <div class="ritual-card">
+    <div class="icon-orange">📡</div>
+    <h1>NetNewsWire</h1>
+    <div class="sub">Refreshing 12 subscriptions...</div>
+    <div class="feed-log" id="feed-log"></div>
+    <div class="progress"><div></div></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     NetNewsWire 主界面
+============================================================ -->
+<div id="nnw-screen" class="nnw-window hidden">
+
+  <div class="title-bar">
+    <div class="traffic-lights">
+      <div class="tl red" onclick="exitRoom()"></div>
+      <div class="tl yellow"></div>
+      <div class="tl green"></div>
+    </div>
+    <div class="title">NetNewsWire — <span id="title-feed">Loading...</span></div>
+    <div style="width: 60px;"></div>
+  </div>
+
+  <div class="toolbar">
+    <button>↻ Refresh</button>
+    <button>✓ Mark All Read</button>
+    <button>📌 Flag</button>
+    <button>← Prev</button>
+    <button>→ Next</button>
+    <input class="search" type="text" placeholder="🔍 Search">
+  </div>
+
+  <div class="main-area">
+
+    <!-- 左: 订阅 -->
+    <div class="subs-pane" id="subs-pane"></div>
+
+    <!-- 中: 文章列表 -->
+    <div class="posts-pane" id="posts-pane"></div>
+
+    <!-- 右: 阅读区 -->
+    <div class="reader-pane" id="reader-pane">
+      <div class="reader-empty">
+        <div class="icon">📖</div>
+        <div>Select an article on the left to read.</div>
+        <div style="margin-top:10px; font-size:11px; color:#bbb;">
+          12 unread items from 12 feeds · last refreshed 18 years ago
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status-bar">
+    <span id="status-left">12 unread items · 12 feeds</span>
+    <span>Last refresh: <span id="last-refresh">just now</span></span>
+  </div>
+</div>
+
+<div class="exit-hint" onclick="exitRoom()" title="ESC to leave">⎋ unsubscribe all</div>
+
+<script>
+// ============================================================
+// 12 篇博客 · Wayback 调研中 (代理回来填)
+// 占位结构: { feed, title, author, date, url, brief }
+// ============================================================
+const POSTS = [
+ {
+  "feed": "Paul Graham",
+  "favicon": "PG",
+  "color": "#c44",
+  "title": "Web 2.0",
+  "author": "Paul Graham",
+  "date": "2005-11",
+  "url": "https://web.archive.org/web/20051124054805if_/http://paulgraham.com/web20.html",
+  "brief": "PG 拆解 \"Web 2.0\" 这个词到底有没有意义 — 把它归结为三件事 (Ajax / 用户当资产 / 不和微软对着干)",
+  "opening": "Does \"Web 2.0\" mean anything? Till recently I thought it didn't, but the truth turns out to be more complicated."
+ },
+ {
+  "feed": "Paul Graham",
+  "favicon": "PG",
+  "color": "#c44",
+  "title": "Why Startups Condense in America",
+  "author": "Paul Graham",
+  "date": "2006-05",
+  "url": "https://web.archive.org/web/20060603213819if_/http://paulgraham.com/america.html",
+  "brief": "创业为啥扎堆硅谷 — 大学 / 移民 / 不歧视年轻人 / 容忍古怪等 10 个原因",
+  "opening": "Startups happen in clusters. There are a lot of them in Silicon Valley and Boston, and few in Chicago or Miami."
+ },
+ {
+  "feed": "Paul Graham",
+  "favicon": "PG",
+  "color": "#c44",
+  "title": "The Power of the Marginal",
+  "author": "Paul Graham",
+  "date": "2006-06",
+  "url": "https://web.archive.org/web/20060627180241if_/http://paulgraham.com/marginal.html",
+  "brief": "业余 / 边缘人 / 局外人为啥反而比体制内的人做出更好的东西",
+  "opening": "A couple years ago my friend Trevor and I went to look at the Apple garage."
+ },
+ {
+  "feed": "Paul Graham",
+  "favicon": "PG",
+  "color": "#c44",
+  "title": "How to Disagree",
+  "author": "Paul Graham",
+  "date": "2008-03",
+  "url": "https://web.archive.org/web/20080402044444if_/http://www.paulgraham.com/disagree.html",
+  "brief": "网络辩论质量金字塔 (DH0 骂人 → DH6 反驳核心) — 互联网讨论早期的经典分级",
+  "opening": "The web is turning writing into a conversation."
+ },
+ {
+  "feed": "Daring Fireball",
+  "favicon": "DF",
+  "color": "#222",
+  "title": "iPhone First Impressions",
+  "author": "John Gruber",
+  "date": "2007-06-30",
+  "url": "https://web.archive.org/web/20071114232203if_/http://daringfireball.net/2007/06/iphone_first_impressions",
+  "brief": "iPhone 首发日 Gruber 写的开箱直播 — Day 1 用户视角, 95% 惊艳 5% 抓狂",
+  "opening": "Overall day one impression: the iPhone is 95 percent amazing, 5 percent maddening."
+ },
+ {
+  "feed": "Daring Fireball",
+  "favicon": "DF",
+  "color": "#222",
+  "title": "Let the Tea Leaf Reading Begin",
+  "author": "John Gruber",
+  "date": "2007-10-19",
+  "url": "https://web.archive.org/web/20071103125831if_/http://daringfireball.net/2007/10/tea_leaf_reading",
+  "brief": "乔布斯宣布 iPhone 要开放 native 第三方 app 那天的\"克里姆林宫学\"分析 — 早于 App Store 的预告",
+  "opening": "Apple punditry is the Kremlinology of the tech world."
+ },
+ {
+  "feed": "Joel on Software",
+  "favicon": "JS",
+  "color": "#0a3",
+  "title": "Making Wrong Code Look Wrong",
+  "author": "Joel Spolsky",
+  "date": "2005-05-11",
+  "url": "https://web.archive.org/web/20080511164246if_/http://www.joelonsoftware.com/articles/Wrong.html",
+  "brief": "匈牙利命名法到底想解决什么 — 让\"危险的代码看着就危险\" (XSS / 用户输入 vs 安全字符串)",
+  "opening": "Way back in September 1983, I started my first real job, working at Oranim, a big bread factory in Israel..."
+ },
+ {
+  "feed": "Joel on Software",
+  "favicon": "JS",
+  "color": "#0a3",
+  "title": "Hitting the High Notes",
+  "author": "Joel Spolsky",
+  "date": "2005-07-25",
+  "url": "https://web.archive.org/web/20081011122640if_/http://www.joelonsoftware.com/articles/highnotes.html",
+  "brief": "程序员能力不是线性的 — 顶级程序员比普通人强 10 倍, 不是因为快, 是因为能\"唱到高音\"",
+  "opening": "In March, 2000, I launched this site with the shaky claim..."
+ },
+ {
+  "feed": "Joel on Software",
+  "favicon": "JS",
+  "color": "#0a3",
+  "title": "A Field Guide to Developers",
+  "author": "Joel Spolsky",
+  "date": "2006-09-07",
+  "url": "https://web.archive.org/web/20080509101155if_/http://www.joelonsoftware.com/articles/FieldGuidetoDevelopers.html",
+  "brief": "招到好程序员的\"野外观察手册\" — 程序员到底想要啥 (私人办公室 / 好椅子 / 不被打扰 / 双显示器)",
+  "opening": "\"You have to read this book,\" he said. \"This is the bible of how to run a software company.\""
+ },
+ {
+  "feed": "Coding Horror",
+  "favicon": "CH",
+  "color": "#e60",
+  "title": "Why Can't Programmers.. Program?",
+  "author": "Jeff Atwood",
+  "date": "2007-02-26",
+  "url": "https://web.archive.org/web/20081207134632if_/http://www.codinghorror.com/blog/archives/000781.html",
+  "brief": "著名的 \"FizzBuzz\" 那篇 — 99% 程序员应聘者连最简单的循环都写不出来, 引爆了整个面试圈",
+  "opening": "I was incredulous when I read this observation from Reginald Braithwaite..."
+ },
+ {
+  "feed": "kottke.org",
+  "favicon": "KO",
+  "color": "#06c",
+  "title": "Twitter",
+  "author": "Jason Kottke",
+  "date": "2007-03-20",
+  "url": "https://web.archive.org/web/20070421030010if_/http://www.kottke.org/07/03/twitter",
+  "brief": "Twitter 刚火两个月 Kottke 写的早期观察 — \"像 2000 年的博客圈, 重温那种感觉\"",
+  "opening": "Playing with Twitter reminds me of blogging circa 2000."
+ },
+ {
+  "feed": "kottke.org",
+  "favicon": "KO",
+  "color": "#06c",
+  "title": "Star Wars viewing order",
+  "author": "Jason Kottke",
+  "date": "2007-09-28",
+  "url": "https://web.archive.org/web/20071222050944if_/http://www.kottke.org/07/09/star-wars-viewing-order",
+  "brief": "给小孩看星战该按什么顺序 — 互联网经典讨论之一, 后来催生了\"Machete Order\"",
+  "opening": "When your child is of an appropriate age to start watching movies, in which order will you show him/her the six Star Wars movies?"
+ }
+];
+
+const STORE = 'noclip-blog2007-v1';
+let currentPost = null;
+const read = new Set(JSON.parse(localStorage.getItem(STORE+'-read') || '[]'));
+
+function init() {
+  renderFeedLog();
+  setTimeout(showApp, 4000);
+}
+
+function renderFeedLog() {
+  const log = document.getElementById('feed-log');
+  POSTS.forEach((p, i) => {
+    setTimeout(() => {
+      log.insertAdjacentHTML('beforeend',
+        `<div><span class="ok">✓</span> ${p.feed} <span style="color:#aaa">(1 new)</span></div>`);
+      log.scrollTop = log.scrollHeight;
+    }, 200 + i * 280);
+  });
+}
+
+function showApp() {
+  document.getElementById('ritual').classList.add('hide');
+  document.getElementById('nnw-screen').classList.remove('hidden');
+  renderSubs();
+  renderPosts();
+}
+
+function renderSubs() {
+  // 按 feed 分组
+  const byFeed = {};
+  POSTS.forEach(p => {
+    if (!byFeed[p.feed]) byFeed[p.feed] = { favicon: p.favicon, color: p.color, count: 0, unread: 0 };
+    byFeed[p.feed].count++;
+    if (!read.has(p.url)) byFeed[p.feed].unread++;
+  });
+  const subs = document.getElementById('subs-pane');
+  subs.innerHTML = `
+    <div class="group">Subscriptions</div>
+    ${Object.entries(byFeed).map(([name, f]) => `
+      <div class="feed-item" onclick="filterFeed('${name.replace(/'/g, "\\'")}')">
+        <span class="favicon" style="background:${f.color}; color:#fff;">${f.favicon}</span>
+        <span>${name}</span>
+        ${f.unread > 0 ? `<span class="count">${f.unread}</span>` : ''}
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderPosts(filterFeed) {
+  const posts = filterFeed ? POSTS.filter(p => p.feed === filterFeed) : POSTS;
+  const pane = document.getElementById('posts-pane');
+  pane.innerHTML = posts.map((p, i) => {
+    const isRead = read.has(p.url);
+    return `
+      <div class="post-item ${isRead ? 'read' : ''}" onclick="openPost(${POSTS.indexOf(p)})">
+        <div class="post-title">${escapeHtml(p.title)}</div>
+        <div class="post-meta">
+          <span>${p.feed}</span>
+          <span>·</span>
+          <span>${p.date}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterFeed(name) {
+  document.querySelectorAll('.feed-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  renderPosts(name);
+}
+
+function openPost(idx) {
+  currentPost = POSTS[idx];
+  read.add(currentPost.url);
+  localStorage.setItem(STORE+'-read', JSON.stringify([...read]));
+  document.getElementById('title-feed').textContent = currentPost.feed;
+  document.querySelectorAll('.post-item').forEach(el => el.classList.remove('active'));
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+  document.getElementById('reader-pane').innerHTML = `
+    <div class="reader-header">
+      <h2>${escapeHtml(currentPost.title)}</h2>
+      <div class="meta">
+        by <b>${escapeHtml(currentPost.author)}</b> · ${currentPost.date} ·
+        <a href="${currentPost.url}" target="_blank">original</a>
+      </div>
+    </div>
+    <iframe class="reader-iframe" src="${currentPost.url}"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups">
+    </iframe>
+  `;
+  renderPosts();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'blog-2007' }, '*');
+  } else {
+    if (confirm('unsubscribe all & quit?')) window.close();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitRoom();
+});
+
+init();
+</script>
+
+</body>
+</html>
