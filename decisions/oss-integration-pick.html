@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>NOCLIP · 下一批 OSS 拼合挑选</title>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --panel: #14141c;
+    --line: #2a2a3e;
+    --text: #e8e8f0;
+    --dim: #8a8aa0;
+    --accent: #ff6b9d;
+    --accent-dim: #4a2a3a;
+    --ok: #5dd39e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "PingFang SC", monospace;
+    margin: 0;
+    padding: 24px;
+  }
+  h1 { color: var(--accent); font-size: 22px; margin: 0 0 4px; letter-spacing: 2px; }
+  .sub { color: var(--dim); font-size: 13px; line-height: 1.7; margin-bottom: 24px; }
+  .group {
+    background: rgba(20,20,28,0.6);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+  .group-head {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .group-sub { color: var(--dim); font-size: 12px; margin-bottom: 12px; font-style: italic; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 10px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card.selected {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--accent-dim) 100%);
+  }
+  .card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: var(--accent);
+    color: #000;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: bold;
+  }
+  .repo {
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: #9bd1ff;
+    word-break: break-all;
+    margin-bottom: 4px;
+  }
+  .name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+    margin: 4px 0;
+  }
+  .what {
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .stats {
+    font-size: 11px;
+    color: var(--dim);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .stats .star { color: #ffd060; }
+  .stats .license { color: var(--ok); }
+  .stats .license.weak { color: #ffa040; }
+  .integration {
+    background: #050508;
+    border-left: 2px solid var(--accent);
+    padding: 6px 8px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .integration b { color: var(--accent); }
+  .controls {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, transparent 0%, var(--bg) 30%);
+    padding: 24px 0 8px;
+    margin-top: 24px;
+    text-align: center;
+  }
+  button {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #ff8ab3; }
+  button:disabled { background: var(--line); color: var(--dim); cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+    margin-left: 10px;
+  }
+  #status { margin-top: 12px; font-size: 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<h1>下一批 OSS · 选 1 个或多个一起做</h1>
+<p class="sub">
+代理已 GitHub 验证 license / star / 活跃度. 点卡片选 (可多选), 选完点最下面 "📋 复制选择给 AI" 把列表粘回对话.<br>
+推荐顺序按"价值密度 + 上线速度"排, 同组里左上最先做.
+</p>
+
+<div class="group">
+  <div class="group-head">A · 新大房间 (一次给 3 个候选)</div>
+  <div class="group-sub">大房间 = 像 IRC / BBS / DAO 那样的整片主题站, 不是单页</div>
+  <div class="grid" id="g-a"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">B · 字体大改 (一次性提升现有 7 间房质感)</div>
+  <div class="group-sub">每间房换对应时代字体: BBS 用 IBM VGA, Amiga 用 Topaz, NEC PC-98 房用 PC-98 字体</div>
+  <div class="grid" id="g-b"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">C · 主控制台 polish (屏保 / 转场 / 彩蛋)</div>
+  <div class="group-sub">空闲态屏保 + 开门 glitch + 角落 mascot · 这层等 claude design 把外壳交回后整合最合适</div>
+  <div class="grid" id="g-c"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">D · 第 13 个老外壳 (Amiga)</div>
+  <div class="group-sub">现有 12 套外壳没覆盖 Amiga (1985-1995). 这一类 GitHub 候选少, AmiBlue 是较实在的</div>
+  <div class="grid" id="g-d"></div>
+</div>
+
+<div class="group">
+  <div class="group-head">E · 现有房间增量 (小利用)</div>
+  <div class="group-sub">不开新房, 把已有 BBS / GeoCities 房间升级一档</div>
+  <div class="grid" id="g-e"></div>
+</div>
+
+<div class="controls">
+  <button id="copyBtn" disabled>📋 复制选择给 AI</button>
+  <button class="secondary" id="clearBtn">清空选择</button>
+  <div id="status">还没选</div>
+</div>
+
+<script>
+const OPTIONS = {
+  a: [
+    {
+      id: 'webamp',
+      repo: 'captbaritone/webamp',
+      name: '🎵 Webamp · Winamp 2 完整复刻',
+      what: 'Winamp 2 浏览器实现 (skins 全兼容 / 真 EQ / 真 visualization). 一行 script 引入. 配合 MySpace 房间最契',
+      star: '11k ⭐', license: 'MIT',
+      integration: '<b>新房间</b>: "1999 某人的 winamp 还在播 Sade·Smooth Operator" · 1 天上线'
+    },
+    {
+      id: 'jszm',
+      repo: 'DLehenbauer/jszm',
+      name: '📖 jszm · Z-machine 文字冒险',
+      what: 'Infocom Zork 引擎解释器 (ES6, 单文件). 跑公共域 Zork I + 那个"西方一栋白房子前的草地…"开场',
+      star: '15 ⭐', license: 'Public domain',
+      integration: '<b>新房间</b>: 绿字终端 + 文字冒险解谜 · 后室味顶满 · 1 天上线'
+    },
+    {
+      id: 'jsnes-web',
+      repo: 'bfirsh/jsnes-web',
+      name: '🎮 jsnes-web · NES 模拟器',
+      what: 'JSNES + UI 包装, 在浏览器里跑 NES 游戏 (用 homebrew 公共域 ROM, 不碰任天堂版权)',
+      star: '633 ⭐', license: 'Apache-2.0',
+      integration: '<b>新房间</b>: "网吧 2002, 8 位机插着卡带" · 2 天上线 (含挑公共域 ROM)'
+    },
+    {
+      id: 'jquery-terminal',
+      repo: 'jcubic/jquery.terminal',
+      name: '⌨️ jquery.terminal · 可交互终端',
+      what: '浏览器里跑可输入命令的老终端 (history / 自动补全 / 内置 ls cat finger 等)',
+      star: '3.2k ⭐', license: 'MIT',
+      integration: '<b>可交互新房间</b>: "拨号上 UNIX shell" · 用户能 ls/cat/finger 触发剧情 · 比展示型房间停留时长更长 · 2-3 天'
+    },
+  ],
+  b: [
+    {
+      id: 'int10h-fonts',
+      repo: 'elementarythings/font_OldSchool_PC (Int10h 镜像)',
+      name: '🔤 Int10h Oldschool PC Font Pack',
+      what: '200+ 真历史 PC 字体: IBM CGA/MDA/VGA · AT&T PC6300 · Amstrad CPC · Toshiba T-series · NEC PC-98',
+      star: '上游传奇资源', license: 'CC-BY-SA (footer 加一行 attribution 即可)',
+      integration: '<b>现有 7 间房一次性升级</b>: BBS 用 IBM VGA · MSN 换合适年代 · Amiga 用 Topaz · NEC PC-98 用日版字 · 最缺的"时代质感"补齐 · 半天'
+    },
+  ],
+  c: [
+    {
+      id: 'matrix',
+      repo: 'Rezmason/matrix',
+      name: '💚 Rezmason/matrix · 数字雨',
+      what: '最高质量 matrix 数字雨 (Resurrections 版/正传版/红色版多套). 主控制台空闲屏保 + DAO 房暗色配套',
+      star: '3.7k ⭐', license: 'MIT',
+      integration: '<b>屏保/装饰</b>: 主控制台 30 秒不动触发 · DAO 房空状态背景'
+    },
+    {
+      id: 'tv-glitch',
+      repo: 'ArtBIT/html5-canvas-tv-glitch',
+      name: '📺 canvas-tv-glitch · 老电视雪花',
+      what: 'HTML5 canvas 实现的老电视 glitch (扫描线 + 雪花 + 色彩偏移)',
+      star: '14 ⭐', license: 'MIT',
+      integration: '<b>开门转场</b>: 换门瞬间叠一层雪花 · 比黑屏好'
+    },
+    {
+      id: 'dvd-saver',
+      repo: 'JonaxPlanta/DVDScreensaver',
+      name: '📀 DVD 弹跳 logo 屏保',
+      what: '经典 DVD logo 在边角碰撞反弹, 大家都等它撞角的那个',
+      star: '1 ⭐', license: 'MIT (代码量极小)',
+      integration: '<b>屏保备选</b>: 30 秒不动触发, 跟 matrix 二选一或轮换'
+    },
+    {
+      id: 'clippy',
+      repo: 'azayrahmad/ms-agent-js (或 clippyjs/clippy.js)',
+      name: '📎 Clippy / MS Agent mascot',
+      what: 'Microsoft Agent (Clippy / Merlin / Rover / Genie) web 重做',
+      star: 'clippyjs 2.8k ⭐', license: 'MIT',
+      integration: '<b>角落彩蛋</b>: Clippy 偶尔冒出 "It looks like you\'re trying to escape the backrooms"'
+    },
+    {
+      id: 'zalgo',
+      repo: 'ChrisPritchard/ZalgoTS',
+      name: '🩸 ZalgoTS · 诡异文字',
+      what: '把任意文字变成 Z̃A̧L̅G̃O 那种垂直堆叠诡异感',
+      star: '1 ⭐', license: 'Unlicense (公共域)',
+      integration: '<b>里程碑彩蛋</b>: 走到第 47 扇时标题文字开始 zalgo 化'
+    },
+  ],
+  d: [
+    {
+      id: 'amiblue',
+      repo: 'makalin/AmiBlue',
+      name: '🖥️ AmiBlue · Amiga Workbench 1.3',
+      what: 'Amiga 1.3 "Old Blue" 风 CSS 库 (高对比窗口 + 硬阴影 + 红色 ✓ 光标)',
+      star: '0 ⭐ (新但意图清晰)', license: 'MIT',
+      integration: '<b>第 13 套外壳</b>: 补 1985-1995 Amiga 时代 · 半天 (含适配 close 按钮逻辑)'
+    },
+  ],
+  e: [
+    {
+      id: 'ansi-html',
+      repo: 'rburns/ansi-to-html (或 ansi_up)',
+      name: '🎨 ansi-to-html · 真 ANSI 渲染',
+      what: '把 ANSI escape (老 BBS art) 转 HTML 彩色块. 现在 BBS 房 ANSI 是手搓的, 装这个就能塞真 16colo.rs artpack',
+      star: '377 ⭐', license: 'MIT',
+      integration: '<b>BBS 房升级</b>: 替换手写 ANSI parser · 现有 BBS 房间内容池可扩充 ~30 张真 BBS art · 半天'
+    },
+    {
+      id: 'old-counter',
+      repo: 'keeb-dev/old-school-counter',
+      name: '🔢 GeoCities 风访客计数器',
+      what: '复刻 "You are visitor #00042" 7-段数字 counter',
+      star: '3 ⭐', license: 'MIT',
+      integration: '<b>GeoCities 房间装饰</b>: Heartland / Area51 房底添 7-段计数器 · localStorage 假装递增 · 10 分钟'
+    },
+  ]
+};
+
+const STORE = 'noclip-oss-pick';
+let selected = new Set(JSON.parse(localStorage.getItem(STORE) || '[]'));
+
+function render() {
+  for (const [key, items] of Object.entries(OPTIONS)) {
+    const grid = document.getElementById('g-' + key);
+    grid.innerHTML = items.map(o => `
+      <div class="card ${selected.has(o.id) ? 'selected' : ''}" data-id="${o.id}">
+        <div class="repo">${o.repo}</div>
+        <div class="name">${o.name}</div>
+        <div class="what">${o.what}</div>
+        <div class="stats">
+          <span class="star">${o.star}</span>
+          <span class="license">📜 ${o.license}</span>
+        </div>
+        <div class="integration">${o.integration}</div>
+      </div>
+    `).join('');
+  }
+  document.querySelectorAll('.card').forEach(c => {
+    c.onclick = () => {
+      const id = c.dataset.id;
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      localStorage.setItem(STORE, JSON.stringify([...selected]));
+      render();
+      update();
+    };
+  });
+  update();
+}
+
+function update() {
+  const n = selected.size;
+  document.getElementById('copyBtn').disabled = n === 0;
+  const s = document.getElementById('status');
+  if (n === 0) s.textContent = '还没选';
+  else s.textContent = `已选 ${n} 个 · 会按列表顺序排队做`;
+}
+
+document.getElementById('copyBtn').onclick = () => {
+  const allOpts = Object.values(OPTIONS).flat();
+  const picks = [...selected].map(id => allOpts.find(o => o.id === id)).filter(Boolean);
+  const txt = `# NOCLIP · 下一批 OSS 拼合
+
+按这个顺序做:
+
+${picks.map((p, i) => `${i+1}. ${p.name}
+   - repo: ${p.repo}
+   - license: ${p.license}
+   - star: ${p.star}
+   - 拼合: ${p.integration.replace(/<[^>]+>/g, '')}
+`).join('\n')}
+`;
+  navigator.clipboard.writeText(txt).then(() => {
+    document.getElementById('status').textContent = '✅ 已复制到剪贴板, 粘到 Claude 对话窗就行';
+  });
+};
+
+document.getElementById('clearBtn').onclick = () => {
+  selected.clear();
+  localStorage.removeItem(STORE);
+  render();
+};
+
+render();
+</script>
+</body>
+</html>

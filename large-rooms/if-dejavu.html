@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Déjà Vu · 1997</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: #050810; color: #80a0ff;
+  font-family: 'PxPlus IBM VGA8', 'IBM VGA8', 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 14px; line-height: 1.45; min-height: 100vh;
+}
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(80,120,255,0.04) 2px, rgba(80,120,255,0.04) 3px),
+    radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.4) 100%);
+  z-index: 998; mix-blend-mode: multiply;
+}
+.term { max-width: 760px; margin: 0 auto; padding: 16px 16px 80px; min-height: 100vh; position: relative; }
+.status-top {
+  border-bottom: 1px solid #2a5a3a; padding: 4px 6px; font-size: 11px; color: #80a0ff;
+  display: flex; justify-content: space-between; margin-bottom: 10px;
+}
+.status-bot {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #050810; border-top: 1px solid #2a5a3a; padding: 6px 14px;
+  font-size: 11px; color: #80a0ff; display: flex; justify-content: space-between; z-index: 100;
+}
+.screen {
+  white-space: pre-wrap; word-wrap: break-word; font-family: inherit;
+  font-size: inherit; line-height: inherit; color: #80a0ff;
+}
+.screen .dim { color: rgba(255,255,255,0.35); }
+.screen .br { color: #a0c0ff; }
+.screen .yel { color: #ffd040; }
+.screen .red { color: #ff5050; }
+.screen .player { color: #80c0ff; }
+.prompt {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px; color: #ffd040;
+  position: sticky; bottom: 36px; background: #050810; padding-top: 6px;
+}
+.prompt::before { content: '>'; }
+.prompt input {
+  background: transparent; border: none; color: #80c0ff;
+  font: inherit; outline: none; flex: 1; caret-color: transparent;
+}
+.cursor-blink {
+  display: inline-block; width: 8px; height: 14px; background: #ffd040;
+  vertical-align: text-bottom; animation: blink 0.7s steps(2,start) infinite;
+}
+@keyframes blink { to { opacity: 0; } }
+.exit-hint {
+  position: fixed; top: 10px; right: 10px;
+  background: #050810; border: 1px solid #2a5a3a; color: #80a0ff;
+  font: 11px inherit; padding: 4px 10px; cursor: pointer; z-index: 101; font-family: inherit;
+}
+.exit-hint:hover { background: #80a0ff; color: #050810; }
+@media (max-width: 720px) { .term { padding: 10px 10px 70px; max-width: 100%; } html { font-size: 12px; } }
+</style>
+</head>
+<body>
+
+<button class="exit-hint" onclick="exitRoom()" title="QUIT to leave">[QUIT]</button>
+
+<div class="term">
+  <div class="status-top">
+    <span>déjà vu · 1997</span>
+    <span id="status-time">~~ jszm idle ~~</span>
+  </div>
+  <div class="screen" id="screen"></div>
+  <div class="prompt" id="prompt" style="display:none;">
+    <input id="input" type="text" maxlength="120" autocomplete="off" spellcheck="false">
+    <span class="cursor-blink"></span>
+  </div>
+</div>
+
+<div class="status-bot">
+  <span>~ IF Archive · Anonymous · 1997 · IF Archive freeware ~</span>
+  <span>commands: LOOK · WAIT · REMEMBER · WAKE</span>
+</div>
+
+<script>
+/*
+  JSZM - JavaScript implementation of Z-machine
+  This program is in public domain.
+
+  Documentation:
+
+  The exported function called JSZM is the constructor, which takes a
+  Uint8Array as input. You can also use JSZM.Version for the version
+  number which is object with properties: major, minor, subminor,
+  timestamp. Properties of JSZM instances are:
+
+  .highlight(fixpitch) = A generator function you define, which will be
+  called to update the highlighting mode, which is fixpitch (if the
+  argument is true) or normal (if argument is false). (You don't have to
+  set it if you aren't implementing variable pitch by default.)
+
+  .isTandy = A boolean, normally false. Set it to true to tell the game
+  that it is a Tandy computer; this affects some games.
+
+  .print(text,scripting) = A generator function that you must define, and
+  will be called to print text. You must implement wrapping and buffering
+  and scripting yourself. The second argument is true if it should be
+  copied to the transcript or false if it should not be.
+
+  .read(maxlen) = A generator function which you must define yourself, and
+  which should return a string containing the player's input. Called when
+  a READ instruction is executed; the argument is the maximum number of
+  characters that are allowed (if you return a longer string, it will be
+  truncated).
+
+  .restarted() = A generator function you can optionally define. When the
+  game starts or if restarted (with the RESTART instruction), it will be
+  called after memory is initialized but before executing any more.
+
+  .restore() = A generator function you can define yourself, which is
+  called when restoring a saved game. Return a Uint8Array with the same
+  contents passed to save() if successful, or you can return false or null
+  or undefined if it failed.
+
+  .run() = A generator function. Call it to run the program from the
+  beginning, and call the next() method of the returned object to begin
+  and to continue. This generator may call your own generator functions
+  which may yield; it doesn't otherwise yield by itself. You must set up
+  the other methods before calling run so that it can properly set up the
+  contents of the Z-machine mode byte. This generator only finishes when a
+  QUIT instruction is executed.
+
+  .save(buf) = A generator function you can define yourself, and is called
+  when saving the game. The argument is a Uint8Array, and you should
+  attempt to save its contents somewhere, and then return true if
+  successful or false if it failed.
+
+  .serial = The serial number of the story file, as six ASCII characters.
+
+  .screen(window) = Normally null. You can set it to a generator function
+  which will be called when the SCREEN opcode is executed if you want to
+  implement split screen.
+
+  .split(height) = Normally null. You can set it to a generator function
+  which will be called when the SPLIT opcode is executed if you want to
+  implement split screen.
+
+  .statusType = False for score/moves and true for hours/minutes. Use this
+  to determine the meaning of arguments to updateStatusLine.
+
+  .updateStatusLine(text,v18,v17) = Normally null, but can be a generator
+  function if you are implementing the status line. It is called when a
+  READ or USL instruction is executed. See statusType for the meaning of
+  v18 and v17. Return value is unused.
+
+  .verify() = A normal function. Calling it will attempt to verify the
+  story file, and returns true if successful or false on error. You can
+  override it with your own verification function if you want to.
+
+  .zorkid = The ZORKID of the story file. This is what is normally
+  displayed as the release number.
+*/
+
+"use strict";
+
+const JSZM_Version={major:2,minor:0,subminor:2,timestamp:1480624305074};
+
+function JSZM(arr) {
+  var mem;
+  mem=this.memInit=new Uint8Array(arr);
+  if(mem[0]!=3) throw new Error("Unsupported Z-code version.");
+  this.byteSwapped=!!(mem[1]&1);
+  this.statusType=!!(mem[1]&2);
+  this.serial=String.fromCharCode(...mem.slice(18,24));
+  this.zorkid=(mem[2]<<(this.byteSwapped?0:8))|(mem[3]<<(this.byteSwapped?8:0));
+}
+
+JSZM.prototype={
+  byteSwapped: false,
+  constructor: JSZM,
+  deserialize: function(ar) {
+    var e,i,j,ds,cs,pc,vi,purbot;
+    var g8,g16s,g16,g24,g32;
+    g8=()=>ar[e++];
+    g16s=()=>(e+=2,vi.getInt16(e-2));
+    g16=()=>(e+=2,vi.getUint16(e-2));
+    g24=()=>(e+=3,vi.getUint32(e-4)&0xFFFFFF);
+    g32=()=>(e+=4,vi.getUint32(e-4));
+    try {
+      e=purbot=this.getu(14);
+      vi=new DataView(ar.buffer);
+      if(ar[2]!=this.mem[2] || ar[3]!=this.mem[3]) return null; // ZORKID does not match
+      pc=g32();
+      cs=new Array(g16());
+      ds=Array.from({length:g16()},g16s);
+      for(i=0;i<cs.length;i++) {
+        cs[i]={};
+        cs[i].local=new Int16Array(g8());
+        cs[i].pc=g24();
+        cs[i].ds=Array.from({length:g16()},g16s);
+        for(j=0;j<cs[i].local.length;j++) cs[i].local[j]=g16s();
+      }
+      this.mem.set(new Uint8Array(ar.buffer,0,purbot));
+      return [ds,cs,pc];
+    } catch(e) {
+      return null;
+    }
+  },
+  endText: 0,
+  fwords: null,
+  genPrint: function*(text) {
+    var x=this.get(16);
+    if(x!=this.savedFlags) {
+      this.savedFlags=x;
+      yield*this.highlight(!!(x&2));
+    }
+    yield*this.print(text,!!(x&1));
+  },
+  get: function(x) { return this.view.getInt16(x,this.byteSwapped); },
+  getText: function(addr) {
+    var d; // function to parse each Z-character
+    var o=""; // output
+    var ps=0; // permanent shift
+    var ts=0; // temporary shift
+    var w; // read each 16-bits data
+    var y; // auxiliary data for parsing state
+    d=v => {
+      if(ts==3) {
+        y=v<<5;
+        ts=4;
+      } else if(ts==4) {
+        y+=v;
+        if(y==13) o+="\n";
+        else if(y) o+=String.fromCharCode(y);
+        ts=ps;
+      } else if(ts==5) {
+        o+=this.getText(this.getu(this.fwords+(y+v)*2)*2);
+        ts=ps;
+      } else if(v==0) {
+        o+=" ";
+      } else if(v<4) {
+        ts=5;
+        y=(v-1)*32;
+      } else if(v<6) {
+        if(!ts) ts=v-3;
+        else if(ts==v-3) ps=ts;
+        else ps=ts=0;
+      } else if(v==6 && ts==2) {
+        ts=3;
+      } else {
+        o+="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[ts*26+v-6];
+        ts=ps;
+      }
+    };
+    for(;;) {
+      w=this.getu(addr);
+      addr+=2;
+      d((w>>10)&31);
+      d((w>>5)&31);
+      d(w&31);
+      if(w&32768) break;
+    }
+    this.endText=addr;
+    return o;
+  },
+  getu: function(x) { return this.view.getUint16(x,this.byteSwapped); },
+  handleInput: function(str,t1,t2) {
+    var i,br,w;
+    // Put text
+    str=str.toLowerCase().slice(0,this.mem[t1]-1);
+    for(i=0;i<str.length;i++) this.mem[t1+i+1]=str.charCodeAt(i);
+    this.mem[t1+str.length+1]=0;
+    // Lex text
+    w=x=>(i=0,x.split("").filter(y => (i+=/[a-z]/.test(y)?1:/[0-9.,!?_#'"\/\\:\-()]/.test(y)?2:4)<7).join(""));
+    br=JSON.parse("["+str.replace(this.regBreak,(m,o)=>",["+(m.length)+","+(this.vocabulary.get(w(m))||0)+","+(o+1)+"]").slice(1)+"]");
+    i=this.mem[t2+1]=br.length;
+    while(i--) {
+      this.putu(t2+i*4+2,br[i][1]);
+      this.mem[t2+i*4+4]=br[i][0];
+      this.mem[t2+i*4+5]=br[i][2];
+    }
+  },
+  highlight: ()=>[],
+  isTandy: false,
+  mem: null,
+  memInit: null,
+  parseVocab: function(s) {
+    this.vocabulary=new Map();
+    
+    if (s === 0) {                                    // If the story file does not contain a dictionary..
+      this.regBreak=new RegExp("[^ \\n\\t]+","g");    //   use the default word separators
+      return;                                         //   and early exit.
+    }
+
+    var e;
+    var n;
+    n=this.mem[s++];
+    e=this.selfInsertingBreaks=String.fromCharCode(...this.mem.slice(s,s+n));
+    e=e.split("").map(x=>(x.toUpperCase()==x.toLowerCase()?"":"\\")+x).join("")+"]";
+    this.regBreak=new RegExp("["+e+"|[^ \\n\\t"+e+"+","g");
+    s+=n;
+    e=this.mem[s++];
+    n=this.get(s);
+    s+=2;
+    while(n--) {
+      this.vocabulary.set(this.getText(s),s);
+      s+=e;
+    }
+  },
+  print: ()=>[],
+  put: function(x,y) { return this.view.setInt16(x,y,this.byteSwapped); },
+  putu: function(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); },
+  read: ()=>[],
+  regBreak: null,
+  restarted: ()=>[],
+  restore: ()=>[],
+  run: function*() {
+    var mem,pc,cs,ds,op0,op1,op2,op3,opc,inst,x,y,z;
+    var globals,objects,fwords,defprop;
+    var addr,fetch,flagset,init,move,opfetch,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
+
+    // Functions
+    addr=(x) => (x&65535)<<1;
+    fetch=(x) => {
+      if(x==0) return ds.pop();
+      if(x<16) return cs[0].local[x-1];
+      return this.get(globals+2*x);
+    };
+    flagset=() => {
+      op3=1<<(15&~op1);
+      op2=objects+op0*9+(op1&16?2:0);
+      opc=this.get(op2);
+    };
+    const initRng = () => {
+      this.seed = (Math.random() * 0xFFFFFFFF) >>> 0;      
+    };
+    init=() => {
+      mem=this.mem=new Uint8Array(this.memInit);
+      this.view=new DataView(mem.buffer);
+      mem[1]&=3;
+      if(this.isTandy) mem[1]|=8;
+      if(!this.updateStatusLine) mem[1]|=16;
+      if(this.screen && this.split) mem[1]|=32;
+      this.put(16,this.savedFlags);
+      if(!this.vocabulary) this.parseVocab(this.getu(8));
+      defprop=this.getu(10)-2;
+      globals=this.getu(12)-32;
+      this.fwords=fwords=this.getu(24);
+      cs=[];
+      ds=[];
+      pc=this.getu(6);
+      objects=defprop+55;
+      initRng();
+    };
+    move=(x,y) => {
+      var w,z;
+      // Remove from old FIRST-NEXT chain
+      if(z=mem[objects+x*9+4]) {
+        if(mem[objects+z*9+6]==x) { // is x.loc.first=x?
+          mem[objects+z*9+6]=mem[objects+x*9+5]; // x.loc.first=x.next
+        } else {
+          z=mem[objects+z*9+6]; // z=x.loc.first
+          while(z!=x) {
+            w=z;
+            z=mem[objects+z*9+5]; // z=z.next
+          }
+          mem[objects+w*9+5]=mem[objects+x*9+5]; // w.next=x.next
+        }
+      }
+      // Insert at beginning of new FIRST-NEXT chain
+      if(mem[objects+x*9+4]=y) { // x.loc=y
+        mem[objects+x*9+5]=mem[objects+y*9+6]; // x.next=y.first
+        mem[objects+y*9+6]=x; // y.first=x
+      } else {
+        mem[objects+x*9+5]=0; // x.next=0
+      }
+    };
+    opfetch=(x,y) => {
+      if((x&=3)==3) return;
+      opc=y;
+      return [pcget,pcgetb,pcfetch][x]();
+    };
+    pcfetch=(x) => fetch(mem[pc++]);
+    pcget=() => {
+      pc+=2;
+      return this.get(pc-2);
+    };
+    pcgetb=() => mem[pc++];
+    pcgetu=() => {
+      pc+=2;
+      return this.getu(pc-2);
+    };
+    predicate=(p) => {
+      var x=pcgetb();
+      if(x&128) p=!p;
+      if(x&64) x&=63; else x=((x&63)<<8)|pcgetb();
+      if(p) return;
+      if(x==0 || x==1) return ret(x);
+      if(x&0x2000) x-=0x4000;
+      pc+=x-2;
+    };
+    propfind=() => {
+      var z=this.getu(objects+op0*9+7);
+      z+=mem[z]*2+1;
+      while(mem[z]) {
+        if((mem[z]&31)==op1) {
+          op3=z+1;
+          return true;
+        } else {
+          z+=(mem[z]>>5)+2;
+        }
+      }
+      op3=0;
+      return false;
+    };
+    ret=(x) => {
+      ds=cs[0].ds;
+      pc=cs[0].pc;
+      cs.shift();
+      store(x);
+    };
+    store=(y) => {
+      var x=pcgetb();
+      if(x==0) ds.push(y);
+      else if(x<16) cs[0].local[x-1]=y;
+      else this.put(globals+2*x,y);
+    };
+    xfetch=(x) => {
+      if(x==0) return ds[ds.length-1];
+      if(x<16) return cs[0].local[x-1];
+      return this.get(globals+2*x);
+    };
+    xstore=(x,y) => {
+      if(x==0) ds[ds.length-1]=y;
+      else if(x<16) cs[0].local[x-1]=y;
+      else this.put(globals+2*x,y);
+    };
+
+    // Initializations
+    init();
+    yield*this.restarted();
+    yield*this.highlight(!!(this.savedFlags&2));
+
+    // Main loop
+    main: for(;;) {
+      inst=pcgetb();
+      if(inst<128) {
+        // 2OP
+        if(inst&64) op0=pcfetch(); else op0=pcgetb();
+        if(inst&32) op1=pcfetch(); else op1=pcgetb();
+        inst&=31;
+        opc=2;
+      } else if(inst<176) {
+        // 1OP
+        x=(inst>>4)&3;
+        inst&=143;
+        if(x==0) op0=pcget();
+        else if(x==1) op0=pcgetb();
+        else if(x==2) op0=pcfetch();
+      } else if(inst>=192) {
+        // EXT
+        x=pcgetb();
+        op0=opfetch(x>>6,1);
+        op1=opfetch(x>>4,2);
+        op2=opfetch(x>>2,3);
+        op3=opfetch(x>>0,4);
+        if(inst<224) inst&=31;
+      }
+      switch(inst) {
+        case 1: // EQUAL?
+          predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
+          break;
+        case 2: // LESS?
+          predicate(op0<op1);
+          break;
+        case 3: // GRTR?
+          predicate(op0>op1);
+          break;
+        case 4: // DLESS?
+          xstore(op0,x=xfetch(op0)-1);
+          predicate(x<op1);
+          break;
+        case 5: // IGRTR?
+          xstore(op0,x=xfetch(op0)+1);
+          predicate(x>op1);
+          break;
+        case 6: // IN?
+          predicate(mem[objects+op0*9+4]==op1);
+          break;
+        case 7: // BTST
+          predicate((op0&op1)==op1);
+          break;
+        case 8: // BOR
+          store(op0|op1);
+          break;
+        case 9: // BAND
+          store(op0&op1);
+          break;
+        case 10: // FSET?
+          flagset();
+          predicate(opc&op3);
+          break;
+        case 11: // FSET
+          flagset();
+          this.put(op2,opc|op3);
+          break;
+        case 12: // FCLEAR
+          flagset();
+          this.put(op2,opc&~op3);
+          break;
+        case 13: // SET
+          xstore(op0,op1);
+          break;
+        case 14: // MOVE
+          move(op0,op1);
+          break;
+        case 15: // GET
+          store(this.get((op0+op1*2)&65535));
+          break;
+        case 16: // GETB
+          store(mem[(op0+op1)&65535]);
+          break;
+        case 17: // GETP
+          if(propfind()) store(mem[op3-1]&32?this.get(op3):mem[op3]);
+          else store(this.get(defprop+2*op1));
+          break;
+        case 18: // GETPT
+          propfind();
+          store(op3);
+          break;
+        case 19: // NEXTP
+          if(op1) {
+            // Return next property
+            propfind();
+            store(mem[op3+(mem[op3-1]>>5)+1]&31);
+          } else {
+            // Return first property
+            x=this.getu(objects+op0*9+7);
+            store(mem[x+mem[x]*2+1]&31);
+          }
+          break;
+        case 20: // ADD
+          store(op0+op1);
+          break;
+        case 21: // SUB
+          store(op0-op1);
+          break;
+        case 22: // MUL
+          store(Math.imul(op0,op1));
+          break;
+        case 23: // DIV
+          store(Math.trunc(op0/op1));
+          break;
+        case 24: // MOD
+          store(op0%op1);
+          break;
+        case 128: // ZERO?
+          predicate(!op0);
+          break;
+        case 129: // NEXT?
+          store(x=mem[objects+op0*9+5]);
+          predicate(x);
+          break;
+        case 130: // FIRST?
+          store(x=mem[objects+op0*9+6]);
+          predicate(x);
+          break;
+        case 131: // LOC
+          store(mem[objects+op0*9+4]);
+          break;
+        case 132: // PTSIZE
+          store((mem[(op0-1)&65535]>>5)+1);
+          break;
+        case 133: // INC
+          x=xfetch(op0);
+          xstore(op0,x+1);
+          break;
+        case 134: // DEC
+          x=xfetch(op0);
+          xstore(op0,x-1);
+          break;
+        case 135: // PRINTB
+          yield*this.genPrint(this.getText(op0&65535));
+          break;
+        case 137: // REMOVE
+          move(op0,0);
+          break;
+        case 138: // PRINTD
+          yield*this.genPrint(this.getText(this.getu(objects+op0*9+7)+1));
+          break;
+        case 139: // RETURN
+          ret(op0);
+          break;
+        case 140: // JUMP
+          pc+=op0-2;
+          break;
+        case 141: // PRINT
+          yield*this.genPrint(this.getText(addr(op0)));
+          break;
+        case 142: // VALUE
+          store(xfetch(op0));
+          break;
+        case 143: // BCOM
+          store(~op0);
+          break;
+        case 176: // RTRUE
+          ret(1);
+          break;
+        case 177: // RFALSE
+          ret(0);
+          break;
+        case 178: // PRINTI
+          yield*this.genPrint(this.getText(pc));
+          pc=this.endText;
+          break;
+        case 179: // PRINTR
+          yield*this.genPrint(this.getText(pc)+"\n");
+          ret(1);
+          break;
+        case 180: // NOOP
+          break;
+        case 181: // SAVE
+          this.savedFlags=this.get(16);
+          predicate(yield*this.save(this.serialize(ds,cs,pc)));
+          break;
+        case 182: // RESTORE
+          this.savedFlags=this.get(16);
+          if(z=yield*this.restore()) z=this.deserialize(z);
+          this.put(16,this.savedFlags);
+          if(z) ds=z[0],cs=z[1],pc=z[2];
+          predicate(z);
+          break;
+        case 183: // RESTART
+          init();
+          yield*this.restarted();
+          break;
+        case 184: // RSTACK
+          ret(ds[ds.length-1]);
+          break;
+        case 185: // FSTACK
+          ds.pop();
+          break;
+        case 186: // QUIT
+          return;
+        case 187: // CRLF
+          yield*this.genPrint("\n");
+          break;
+        case 188: // USL
+          if(this.updateStatusLine) yield*this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+          break;
+        case 189: // VERIFY
+          predicate(this.verify());
+          break;
+        case 224: // CALL
+          if(op0) {
+            x=mem[op0=addr(op0)];
+            cs.unshift({ds:ds,pc:pc,local:new Int16Array(x)});
+            ds=[];
+            pc=op0+1;
+            for(x=0;x<mem[op0];x++) cs[0].local[x]=pcget();
+            if(opc>1 && mem[op0]>0) cs[0].local[0]=op1;
+            if(opc>2 && mem[op0]>1) cs[0].local[1]=op2;
+            if(opc>3 && mem[op0]>2) cs[0].local[2]=op3;
+          } else {
+            store(0);
+          }
+          break;
+        case 225: // PUT
+          this.put((op0+op1*2)&65535,op2);
+          break;
+        case 226: // PUTB
+          mem[(op0+op1)&65535]=op2;
+          break;
+        case 227: // PUTP
+          propfind();
+          if(mem[op3-1]&32) this.put(op3,op2);
+          else mem[op3]=op2;
+          break;
+        case 228: // READ
+          yield*this.genPrint("");
+          if(this.updateStatusLine) yield*this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+          this.handleInput(yield*this.read(mem[op0&65535]),op0&65535,op1&65535);
+          break;
+        case 229: // PRINTC
+          yield*this.genPrint(op0==13?"\n":op0?String.fromCharCode(op0):"");
+          break;
+        case 230: // PRINTN
+          yield*this.genPrint(String(op0));
+          break;
+        case 231: // RANDOM
+          if (op0 <= 0) {               // If 'op0' is non-positive, reseed the PRNG.
+            if (op0 === 0) {
+              initRng();                // If 0, seed using Math.random().
+            } else {
+              this.seed = (op0 >>> 0);  // If negative, seed with the specified value.
+            }
+            store(0);                   // Reseeding always returns 0.
+            break;
+          }
+          this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
+          store(Math.floor((this.seed / 0xFFFFFFFF) * op0) + 1);    // Return integer in range [1..op0] (inclusive).
+          break;
+        case 232: // PUSH
+          ds.push(op0);
+          break;
+        case 233: // POP
+          xstore(op0,ds.pop());
+          break;
+        case 234: // SPLIT
+          if(this.split) yield*this.split(op0);
+          break;
+        case 235: // SCREEN
+          if(this.screen) yield*this.screen(op0);
+          break;
+        default:
+          throw new Error("JSZM: Invalid Z-machine opcode");
+      }
+    }
+
+  },
+  save: ()=>[],
+  savedFlags: 0,
+  selfInsertingBreaks: null,
+  serial: null,
+  serialize: function(ds,cs,pc) {
+    var i,j,e,ar,vi;
+    e=this.getu(14); // PURBOT
+    i=e+cs.reduce((p,c)=>p+2*(c.ds.length+c.local.length)+6,0)+2*ds.length+8;
+    ar=new Uint8Array(i);
+    ar.set(new Uint8Array(this.mem.buffer,0,e));
+    vi=new DataView(ar.buffer);
+    vi.setUint32(e,pc);
+    vi.setUint16(e+4,cs.length);
+    vi.setUint16(e+6,ds.length);
+    for(i=0;i<ds.length;i++) vi.setInt16(e+i*2+8,ds[i]);
+    e+=ds.length*2+8;
+    for(i=0;i<cs.length;i++) {
+      vi.setUint32(e,cs[i].pc);
+      vi.setUint8(e,cs[i].local.length);
+      vi.setUint16(e+4,cs[i].ds.length);
+      for(j=0;j<cs[i].ds.length;j++) vi.setInt16(e+j*2+6,cs[i].ds[j]);
+      for(j=0;j<cs[i].local.length;j++) vi.setInt16(e+cs[i].ds.length*2+j*2+6,cs[i].local[j]);
+      e+=(cs[i].ds.length+cs[i].local.length)*2+6;
+    }
+    return ar;
+  },
+  screen: null,
+  split: null,
+  statusType: null,
+  updateStatusLine: null,
+  verify: function() {
+    var plenth=this.getu(26);
+    var pchksm=this.getu(28);
+    var i=64;
+    while(i<plenth*2) pchksm=(pchksm-this.memInit[i++])&65535;
+    return !pchksm;
+  },
+  view: null,
+  vocabulary: null,
+  zorkid: null,
+};
+
+JSZM.version=JSZM_Version;
+
+try {
+  if(module && module.exports) module.exports=JSZM;
+} catch(e) {}
+</script>
+
+<script>const Z3_B64 = "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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACtgLAQsSCyMLLAtdC24LhwuQC7kL0gvrC/QL/QwuDD8MSAxRDFoMYwxsDHUMfgyHDKAMqQyyDLsMxAzVDOYM7w0A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";</script>
+
+<script>
+const GAME = { key: "dejavu", title: "D\u00e9j\u00e0 Vu" };
+const RITUAL_LINES = [["d\u00e9j\u00e0 vu...", "dim"], ["d\u00e9j\u00e0 vu...", "dim"], ["d\u00e9j\u00e0 vu... wait. haven't we been here before?", "br"], ["// 1997 \u5e74\u63d0\u4ea4 \u00b7 \u91cd\u590d\u68a6\u5883\u611f", "dim"]];
+const SUB_TITLE = "wait. haven't we been here before?";
+
+const screen = document.getElementById('screen');
+const promptEl = document.getElementById('prompt');
+const inputEl = document.getElementById('input');
+
+function escHtml(s) {
+  return String(s).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+}
+function append(text, cls) {
+  if (cls) screen.innerHTML += '<span class="' + cls + '">' + escHtml(text) + '</span>';
+  else screen.innerHTML += escHtml(text);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+function appendRaw(html) {
+  screen.innerHTML += html;
+  window.scrollTo(0, document.body.scrollHeight);
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function showRitualAndStart() {
+  appendRaw('\n<span class="br">' + escHtml(GAME.title) + '</span> · <span class="dim">' + escHtml(SUB_TITLE) + '</span>\n\n');
+  for (const [text, cls] of RITUAL_LINES) {
+    await sleep(450 + Math.random() * 250);
+    append(text + '\n', cls);
+  }
+  await sleep(700);
+  appendRaw('\n<span class="dim">[ initializing Z-machine ... ]</span>\n\n');
+  startGame();
+}
+
+function startGame() {
+  document.getElementById('status-time').textContent = '~~ loading ~~';
+  let bytes;
+  try {
+    const binStr = atob(Z3_B64);
+    bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+  } catch (e) {
+    appendRaw('<span class="red">[ FAILED: ' + escHtml(e.message) + ' ]</span>\n');
+    return;
+  }
+
+  const game = new JSZM(bytes);
+  let inputResolver = null;
+  function waitForInput() {
+    return new Promise(r => {
+      inputResolver = r;
+      promptEl.style.display = 'flex';
+      inputEl.focus();
+    });
+  }
+  inputEl.onkeydown = (e) => {
+    if (e.key === 'Enter' && inputResolver) {
+      const v = inputEl.value;
+      appendRaw('<span class="player">&gt; ' + escHtml(v) + '</span>\n');
+      inputEl.value = '';
+      promptEl.style.display = 'none';
+      const r = inputResolver; inputResolver = null; r(v);
+    }
+  };
+
+  game.print = function*(text, scripting) { append(text); };
+  game.read = function*(maxlen) {
+    const v = yield waitForInput();
+    return (v || '').slice(0, maxlen || 120);
+  };
+  game.save = function*(buf) {
+    try {
+      localStorage.setItem('noclip-zork-' + GAME.key, JSON.stringify(Array.from(buf)));
+      append('\n[ save ok ]\n', 'dim'); return true;
+    } catch(e) { append('\n[ save failed ]\n', 'red'); return false; }
+  };
+  game.restore = function*() {
+    try {
+      const arr = JSON.parse(localStorage.getItem('noclip-zork-' + GAME.key));
+      if (!arr) { append('\n[ no save ]\n', 'red'); return null; }
+      append('\n[ restored ]\n', 'dim');
+      return new Uint8Array(arr);
+    } catch(e) { append('\n[ restore failed ]\n', 'red'); return null; }
+  };
+
+  const runner = game.run();
+  document.getElementById('status-time').textContent = '~~ in story ~~';
+
+  async function pump(value) {
+    let r;
+    try { r = runner.next(value); }
+    catch (e) {
+      append('\n[ runtime error: ' + e.message + ' ]\n', 'red');
+      console.error(e); return;
+    }
+    if (r.done) {
+      document.getElementById('status-time').textContent = '~~ ended ~~';
+      append('\n\n[ Z-machine halted. ESC to exit. ]\n', 'dim');
+      return;
+    }
+    const v = r.value;
+    if (v && typeof v.then === 'function') { await pump(await v); }
+    else { setTimeout(() => pump(v), 0); }
+  }
+  pump(undefined);
+}
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'if-' + GAME.key }, '*');
+  } else {
+    if (confirm('QUIT and leave?')) window.close();
+  }
+}
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitRoom();
+});
+
+showRitualAndStart();
+</script>
+
+</body>
+</html>

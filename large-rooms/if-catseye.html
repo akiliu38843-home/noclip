@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Cat's Eye · 2007</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: #0a0805; color: #ffd040;
+  font-family: 'PxPlus IBM VGA8', 'IBM VGA8', 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 14px; line-height: 1.45; min-height: 100vh;
+}
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(255,200,60,0.05) 2px, rgba(255,200,60,0.05) 3px),
+    radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.4) 100%);
+  z-index: 998; mix-blend-mode: multiply;
+}
+.term { max-width: 760px; margin: 0 auto; padding: 16px 16px 80px; min-height: 100vh; position: relative; }
+.status-top {
+  border-bottom: 1px solid #2a5a3a; padding: 4px 6px; font-size: 11px; color: #ffd040;
+  display: flex; justify-content: space-between; margin-bottom: 10px;
+}
+.status-bot {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #0a0805; border-top: 1px solid #2a5a3a; padding: 6px 14px;
+  font-size: 11px; color: #ffd040; display: flex; justify-content: space-between; z-index: 100;
+}
+.screen {
+  white-space: pre-wrap; word-wrap: break-word; font-family: inherit;
+  font-size: inherit; line-height: inherit; color: #ffd040;
+}
+.screen .dim { color: rgba(255,255,255,0.35); }
+.screen .br { color: #fff080; }
+.screen .yel { color: #ff8030; }
+.screen .red { color: #ff5050; }
+.screen .player { color: #80c0ff; }
+.prompt {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px; color: #ff8030;
+  position: sticky; bottom: 36px; background: #0a0805; padding-top: 6px;
+}
+.prompt::before { content: '>'; }
+.prompt input {
+  background: transparent; border: none; color: #80c0ff;
+  font: inherit; outline: none; flex: 1; caret-color: transparent;
+}
+.cursor-blink {
+  display: inline-block; width: 8px; height: 14px; background: #ff8030;
+  vertical-align: text-bottom; animation: blink 0.7s steps(2,start) infinite;
+}
+@keyframes blink { to { opacity: 0; } }
+.exit-hint {
+  position: fixed; top: 10px; right: 10px;
+  background: #0a0805; border: 1px solid #2a5a3a; color: #ffd040;
+  font: 11px inherit; padding: 4px 10px; cursor: pointer; z-index: 101; font-family: inherit;
+}
+.exit-hint:hover { background: #ffd040; color: #0a0805; }
+@media (max-width: 720px) { .term { padding: 10px 10px 70px; max-width: 100%; } html { font-size: 12px; } }
+</style>
+</head>
+<body>
+
+<button class="exit-hint" onclick="exitRoom()" title="QUIT to leave">[QUIT]</button>
+
+<div class="term">
+  <div class="status-top">
+    <span>Cat's Eye · 2007</span>
+    <span id="status-time">~~ jszm idle ~~</span>
+  </div>
+  <div class="screen" id="screen"></div>
+  <div class="prompt" id="prompt" style="display:none;">
+    <input id="input" type="text" maxlength="120" autocomplete="off" spellcheck="false">
+    <span class="cursor-blink"></span>
+  </div>
+</div>
+
+<div class="status-bot">
+  <span>~ IF Archive · Anonymous · 2007 · IF Archive freeware ~</span>
+  <span>commands: LOOK · TURN · CLOSE EYES · OPEN EYES</span>
+</div>
+
+<script>
+/*
+  JSZM - JavaScript implementation of Z-machine
+  This program is in public domain.
+
+  Documentation:
+
+  The exported function called JSZM is the constructor, which takes a
+  Uint8Array as input. You can also use JSZM.Version for the version
+  number which is object with properties: major, minor, subminor,
+  timestamp. Properties of JSZM instances are:
+
+  .highlight(fixpitch) = A generator function you define, which will be
+  called to update the highlighting mode, which is fixpitch (if the
+  argument is true) or normal (if argument is false). (You don't have to
+  set it if you aren't implementing variable pitch by default.)
+
+  .isTandy = A boolean, normally false. Set it to true to tell the game
+  that it is a Tandy computer; this affects some games.
+
+  .print(text,scripting) = A generator function that you must define, and
+  will be called to print text. You must implement wrapping and buffering
+  and scripting yourself. The second argument is true if it should be
+  copied to the transcript or false if it should not be.
+
+  .read(maxlen) = A generator function which you must define yourself, and
+  which should return a string containing the player's input. Called when
+  a READ instruction is executed; the argument is the maximum number of
+  characters that are allowed (if you return a longer string, it will be
+  truncated).
+
+  .restarted() = A generator function you can optionally define. When the
+  game starts or if restarted (with the RESTART instruction), it will be
+  called after memory is initialized but before executing any more.
+
+  .restore() = A generator function you can define yourself, which is
+  called when restoring a saved game. Return a Uint8Array with the same
+  contents passed to save() if successful, or you can return false or null
+  or undefined if it failed.
+
+  .run() = A generator function. Call it to run the program from the
+  beginning, and call the next() method of the returned object to begin
+  and to continue. This generator may call your own generator functions
+  which may yield; it doesn't otherwise yield by itself. You must set up
+  the other methods before calling run so that it can properly set up the
+  contents of the Z-machine mode byte. This generator only finishes when a
+  QUIT instruction is executed.
+
+  .save(buf) = A generator function you can define yourself, and is called
+  when saving the game. The argument is a Uint8Array, and you should
+  attempt to save its contents somewhere, and then return true if
+  successful or false if it failed.
+
+  .serial = The serial number of the story file, as six ASCII characters.
+
+  .screen(window) = Normally null. You can set it to a generator function
+  which will be called when the SCREEN opcode is executed if you want to
+  implement split screen.
+
+  .split(height) = Normally null. You can set it to a generator function
+  which will be called when the SPLIT opcode is executed if you want to
+  implement split screen.
+
+  .statusType = False for score/moves and true for hours/minutes. Use this
+  to determine the meaning of arguments to updateStatusLine.
+
+  .updateStatusLine(text,v18,v17) = Normally null, but can be a generator
+  function if you are implementing the status line. It is called when a
+  READ or USL instruction is executed. See statusType for the meaning of
+  v18 and v17. Return value is unused.
+
+  .verify() = A normal function. Calling it will attempt to verify the
+  story file, and returns true if successful or false on error. You can
+  override it with your own verification function if you want to.
+
+  .zorkid = The ZORKID of the story file. This is what is normally
+  displayed as the release number.
+*/
+
+"use strict";
+
+const JSZM_Version={major:2,minor:0,subminor:2,timestamp:1480624305074};
+
+function JSZM(arr) {
+  var mem;
+  mem=this.memInit=new Uint8Array(arr);
+  if(mem[0]!=3) throw new Error("Unsupported Z-code version.");
+  this.byteSwapped=!!(mem[1]&1);
+  this.statusType=!!(mem[1]&2);
+  this.serial=String.fromCharCode(...mem.slice(18,24));
+  this.zorkid=(mem[2]<<(this.byteSwapped?0:8))|(mem[3]<<(this.byteSwapped?8:0));
+}
+
+JSZM.prototype={
+  byteSwapped: false,
+  constructor: JSZM,
+  deserialize: function(ar) {
+    var e,i,j,ds,cs,pc,vi,purbot;
+    var g8,g16s,g16,g24,g32;
+    g8=()=>ar[e++];
+    g16s=()=>(e+=2,vi.getInt16(e-2));
+    g16=()=>(e+=2,vi.getUint16(e-2));
+    g24=()=>(e+=3,vi.getUint32(e-4)&0xFFFFFF);
+    g32=()=>(e+=4,vi.getUint32(e-4));
+    try {
+      e=purbot=this.getu(14);
+      vi=new DataView(ar.buffer);
+      if(ar[2]!=this.mem[2] || ar[3]!=this.mem[3]) return null; // ZORKID does not match
+      pc=g32();
+      cs=new Array(g16());
+      ds=Array.from({length:g16()},g16s);
+      for(i=0;i<cs.length;i++) {
+        cs[i]={};
+        cs[i].local=new Int16Array(g8());
+        cs[i].pc=g24();
+        cs[i].ds=Array.from({length:g16()},g16s);
+        for(j=0;j<cs[i].local.length;j++) cs[i].local[j]=g16s();
+      }
+      this.mem.set(new Uint8Array(ar.buffer,0,purbot));
+      return [ds,cs,pc];
+    } catch(e) {
+      return null;
+    }
+  },
+  endText: 0,
+  fwords: null,
+  genPrint: function*(text) {
+    var x=this.get(16);
+    if(x!=this.savedFlags) {
+      this.savedFlags=x;
+      yield*this.highlight(!!(x&2));
+    }
+    yield*this.print(text,!!(x&1));
+  },
+  get: function(x) { return this.view.getInt16(x,this.byteSwapped); },
+  getText: function(addr) {
+    var d; // function to parse each Z-character
+    var o=""; // output
+    var ps=0; // permanent shift
+    var ts=0; // temporary shift
+    var w; // read each 16-bits data
+    var y; // auxiliary data for parsing state
+    d=v => {
+      if(ts==3) {
+        y=v<<5;
+        ts=4;
+      } else if(ts==4) {
+        y+=v;
+        if(y==13) o+="\n";
+        else if(y) o+=String.fromCharCode(y);
+        ts=ps;
+      } else if(ts==5) {
+        o+=this.getText(this.getu(this.fwords+(y+v)*2)*2);
+        ts=ps;
+      } else if(v==0) {
+        o+=" ";
+      } else if(v<4) {
+        ts=5;
+        y=(v-1)*32;
+      } else if(v<6) {
+        if(!ts) ts=v-3;
+        else if(ts==v-3) ps=ts;
+        else ps=ts=0;
+      } else if(v==6 && ts==2) {
+        ts=3;
+      } else {
+        o+="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[ts*26+v-6];
+        ts=ps;
+      }
+    };
+    for(;;) {
+      w=this.getu(addr);
+      addr+=2;
+      d((w>>10)&31);
+      d((w>>5)&31);
+      d(w&31);
+      if(w&32768) break;
+    }
+    this.endText=addr;
+    return o;
+  },
+  getu: function(x) { return this.view.getUint16(x,this.byteSwapped); },
+  handleInput: function(str,t1,t2) {
+    var i,br,w;
+    // Put text
+    str=str.toLowerCase().slice(0,this.mem[t1]-1);
+    for(i=0;i<str.length;i++) this.mem[t1+i+1]=str.charCodeAt(i);
+    this.mem[t1+str.length+1]=0;
+    // Lex text
+    w=x=>(i=0,x.split("").filter(y => (i+=/[a-z]/.test(y)?1:/[0-9.,!?_#'"\/\\:\-()]/.test(y)?2:4)<7).join(""));
+    br=JSON.parse("["+str.replace(this.regBreak,(m,o)=>",["+(m.length)+","+(this.vocabulary.get(w(m))||0)+","+(o+1)+"]").slice(1)+"]");
+    i=this.mem[t2+1]=br.length;
+    while(i--) {
+      this.putu(t2+i*4+2,br[i][1]);
+      this.mem[t2+i*4+4]=br[i][0];
+      this.mem[t2+i*4+5]=br[i][2];
+    }
+  },
+  highlight: ()=>[],
+  isTandy: false,
+  mem: null,
+  memInit: null,
+  parseVocab: function(s) {
+    this.vocabulary=new Map();
+    
+    if (s === 0) {                                    // If the story file does not contain a dictionary..
+      this.regBreak=new RegExp("[^ \\n\\t]+","g");    //   use the default word separators
+      return;                                         //   and early exit.
+    }
+
+    var e;
+    var n;
+    n=this.mem[s++];
+    e=this.selfInsertingBreaks=String.fromCharCode(...this.mem.slice(s,s+n));
+    e=e.split("").map(x=>(x.toUpperCase()==x.toLowerCase()?"":"\\")+x).join("")+"]";
+    this.regBreak=new RegExp("["+e+"|[^ \\n\\t"+e+"+","g");
+    s+=n;
+    e=this.mem[s++];
+    n=this.get(s);
+    s+=2;
+    while(n--) {
+      this.vocabulary.set(this.getText(s),s);
+      s+=e;
+    }
+  },
+  print: ()=>[],
+  put: function(x,y) { return this.view.setInt16(x,y,this.byteSwapped); },
+  putu: function(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); },
+  read: ()=>[],
+  regBreak: null,
+  restarted: ()=>[],
+  restore: ()=>[],
+  run: function*() {
+    var mem,pc,cs,ds,op0,op1,op2,op3,opc,inst,x,y,z;
+    var globals,objects,fwords,defprop;
+    var addr,fetch,flagset,init,move,opfetch,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
+
+    // Functions
+    addr=(x) => (x&65535)<<1;
+    fetch=(x) => {
+      if(x==0) return ds.pop();
+      if(x<16) return cs[0].local[x-1];
+      return this.get(globals+2*x);
+    };
+    flagset=() => {
+      op3=1<<(15&~op1);
+      op2=objects+op0*9+(op1&16?2:0);
+      opc=this.get(op2);
+    };
+    const initRng = () => {
+      this.seed = (Math.random() * 0xFFFFFFFF) >>> 0;      
+    };
+    init=() => {
+      mem=this.mem=new Uint8Array(this.memInit);
+      this.view=new DataView(mem.buffer);
+      mem[1]&=3;
+      if(this.isTandy) mem[1]|=8;
+      if(!this.updateStatusLine) mem[1]|=16;
+      if(this.screen && this.split) mem[1]|=32;
+      this.put(16,this.savedFlags);
+      if(!this.vocabulary) this.parseVocab(this.getu(8));
+      defprop=this.getu(10)-2;
+      globals=this.getu(12)-32;
+      this.fwords=fwords=this.getu(24);
+      cs=[];
+      ds=[];
+      pc=this.getu(6);
+      objects=defprop+55;
+      initRng();
+    };
+    move=(x,y) => {
+      var w,z;
+      // Remove from old FIRST-NEXT chain
+      if(z=mem[objects+x*9+4]) {
+        if(mem[objects+z*9+6]==x) { // is x.loc.first=x?
+          mem[objects+z*9+6]=mem[objects+x*9+5]; // x.loc.first=x.next
+        } else {
+          z=mem[objects+z*9+6]; // z=x.loc.first
+          while(z!=x) {
+            w=z;
+            z=mem[objects+z*9+5]; // z=z.next
+          }
+          mem[objects+w*9+5]=mem[objects+x*9+5]; // w.next=x.next
+        }
+      }
+      // Insert at beginning of new FIRST-NEXT chain
+      if(mem[objects+x*9+4]=y) { // x.loc=y
+        mem[objects+x*9+5]=mem[objects+y*9+6]; // x.next=y.first
+        mem[objects+y*9+6]=x; // y.first=x
+      } else {
+        mem[objects+x*9+5]=0; // x.next=0
+      }
+    };
+    opfetch=(x,y) => {
+      if((x&=3)==3) return;
+      opc=y;
+      return [pcget,pcgetb,pcfetch][x]();
+    };
+    pcfetch=(x) => fetch(mem[pc++]);
+    pcget=() => {
+      pc+=2;
+      return this.get(pc-2);
+    };
+    pcgetb=() => mem[pc++];
+    pcgetu=() => {
+      pc+=2;
+      return this.getu(pc-2);
+    };
+    predicate=(p) => {
+      var x=pcgetb();
+      if(x&128) p=!p;
+      if(x&64) x&=63; else x=((x&63)<<8)|pcgetb();
+      if(p) return;
+      if(x==0 || x==1) return ret(x);
+      if(x&0x2000) x-=0x4000;
+      pc+=x-2;
+    };
+    propfind=() => {
+      var z=this.getu(objects+op0*9+7);
+      z+=mem[z]*2+1;
+      while(mem[z]) {
+        if((mem[z]&31)==op1) {
+          op3=z+1;
+          return true;
+        } else {
+          z+=(mem[z]>>5)+2;
+        }
+      }
+      op3=0;
+      return false;
+    };
+    ret=(x) => {
+      ds=cs[0].ds;
+      pc=cs[0].pc;
+      cs.shift();
+      store(x);
+    };
+    store=(y) => {
+      var x=pcgetb();
+      if(x==0) ds.push(y);
+      else if(x<16) cs[0].local[x-1]=y;
+      else this.put(globals+2*x,y);
+    };
+    xfetch=(x) => {
+      if(x==0) return ds[ds.length-1];
+      if(x<16) return cs[0].local[x-1];
+      return this.get(globals+2*x);
+    };
+    xstore=(x,y) => {
+      if(x==0) ds[ds.length-1]=y;
+      else if(x<16) cs[0].local[x-1]=y;
+      else this.put(globals+2*x,y);
+    };
+
+    // Initializations
+    init();
+    yield*this.restarted();
+    yield*this.highlight(!!(this.savedFlags&2));
+
+    // Main loop
+    main: for(;;) {
+      inst=pcgetb();
+      if(inst<128) {
+        // 2OP
+        if(inst&64) op0=pcfetch(); else op0=pcgetb();
+        if(inst&32) op1=pcfetch(); else op1=pcgetb();
+        inst&=31;
+        opc=2;
+      } else if(inst<176) {
+        // 1OP
+        x=(inst>>4)&3;
+        inst&=143;
+        if(x==0) op0=pcget();
+        else if(x==1) op0=pcgetb();
+        else if(x==2) op0=pcfetch();
+      } else if(inst>=192) {
+        // EXT
+        x=pcgetb();
+        op0=opfetch(x>>6,1);
+        op1=opfetch(x>>4,2);
+        op2=opfetch(x>>2,3);
+        op3=opfetch(x>>0,4);
+        if(inst<224) inst&=31;
+      }
+      switch(inst) {
+        case 1: // EQUAL?
+          predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
+          break;
+        case 2: // LESS?
+          predicate(op0<op1);
+          break;
+        case 3: // GRTR?
+          predicate(op0>op1);
+          break;
+        case 4: // DLESS?
+          xstore(op0,x=xfetch(op0)-1);
+          predicate(x<op1);
+          break;
+        case 5: // IGRTR?
+          xstore(op0,x=xfetch(op0)+1);
+          predicate(x>op1);
+          break;
+        case 6: // IN?
+          predicate(mem[objects+op0*9+4]==op1);
+          break;
+        case 7: // BTST
+          predicate((op0&op1)==op1);
+          break;
+        case 8: // BOR
+          store(op0|op1);
+          break;
+        case 9: // BAND
+          store(op0&op1);
+          break;
+        case 10: // FSET?
+          flagset();
+          predicate(opc&op3);
+          break;
+        case 11: // FSET
+          flagset();
+          this.put(op2,opc|op3);
+          break;
+        case 12: // FCLEAR
+          flagset();
+          this.put(op2,opc&~op3);
+          break;
+        case 13: // SET
+          xstore(op0,op1);
+          break;
+        case 14: // MOVE
+          move(op0,op1);
+          break;
+        case 15: // GET
+          store(this.get((op0+op1*2)&65535));
+          break;
+        case 16: // GETB
+          store(mem[(op0+op1)&65535]);
+          break;
+        case 17: // GETP
+          if(propfind()) store(mem[op3-1]&32?this.get(op3):mem[op3]);
+          else store(this.get(defprop+2*op1));
+          break;
+        case 18: // GETPT
+          propfind();
+          store(op3);
+          break;
+        case 19: // NEXTP
+          if(op1) {
+            // Return next property
+            propfind();
+            store(mem[op3+(mem[op3-1]>>5)+1]&31);
+          } else {
+            // Return first property
+            x=this.getu(objects+op0*9+7);
+            store(mem[x+mem[x]*2+1]&31);
+          }
+          break;
+        case 20: // ADD
+          store(op0+op1);
+          break;
+        case 21: // SUB
+          store(op0-op1);
+          break;
+        case 22: // MUL
+          store(Math.imul(op0,op1));
+          break;
+        case 23: // DIV
+          store(Math.trunc(op0/op1));
+          break;
+        case 24: // MOD
+          store(op0%op1);
+          break;
+        case 128: // ZERO?
+          predicate(!op0);
+          break;
+        case 129: // NEXT?
+          store(x=mem[objects+op0*9+5]);
+          predicate(x);
+          break;
+        case 130: // FIRST?
+          store(x=mem[objects+op0*9+6]);
+          predicate(x);
+          break;
+        case 131: // LOC
+          store(mem[objects+op0*9+4]);
+          break;
+        case 132: // PTSIZE
+          store((mem[(op0-1)&65535]>>5)+1);
+          break;
+        case 133: // INC
+          x=xfetch(op0);
+          xstore(op0,x+1);
+          break;
+        case 134: // DEC
+          x=xfetch(op0);
+          xstore(op0,x-1);
+          break;
+        case 135: // PRINTB
+          yield*this.genPrint(this.getText(op0&65535));
+          break;
+        case 137: // REMOVE
+          move(op0,0);
+          break;
+        case 138: // PRINTD
+          yield*this.genPrint(this.getText(this.getu(objects+op0*9+7)+1));
+          break;
+        case 139: // RETURN
+          ret(op0);
+          break;
+        case 140: // JUMP
+          pc+=op0-2;
+          break;
+        case 141: // PRINT
+          yield*this.genPrint(this.getText(addr(op0)));
+          break;
+        case 142: // VALUE
+          store(xfetch(op0));
+          break;
+        case 143: // BCOM
+          store(~op0);
+          break;
+        case 176: // RTRUE
+          ret(1);
+          break;
+        case 177: // RFALSE
+          ret(0);
+          break;
+        case 178: // PRINTI
+          yield*this.genPrint(this.getText(pc));
+          pc=this.endText;
+          break;
+        case 179: // PRINTR
+          yield*this.genPrint(this.getText(pc)+"\n");
+          ret(1);
+          break;
+        case 180: // NOOP
+          break;
+        case 181: // SAVE
+          this.savedFlags=this.get(16);
+          predicate(yield*this.save(this.serialize(ds,cs,pc)));
+          break;
+        case 182: // RESTORE
+          this.savedFlags=this.get(16);
+          if(z=yield*this.restore()) z=this.deserialize(z);
+          this.put(16,this.savedFlags);
+          if(z) ds=z[0],cs=z[1],pc=z[2];
+          predicate(z);
+          break;
+        case 183: // RESTART
+          init();
+          yield*this.restarted();
+          break;
+        case 184: // RSTACK
+          ret(ds[ds.length-1]);
+          break;
+        case 185: // FSTACK
+          ds.pop();
+          break;
+        case 186: // QUIT
+          return;
+        case 187: // CRLF
+          yield*this.genPrint("\n");
+          break;
+        case 188: // USL
+          if(this.updateStatusLine) yield*this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+          break;
+        case 189: // VERIFY
+          predicate(this.verify());
+          break;
+        case 224: // CALL
+          if(op0) {
+            x=mem[op0=addr(op0)];
+            cs.unshift({ds:ds,pc:pc,local:new Int16Array(x)});
+            ds=[];
+            pc=op0+1;
+            for(x=0;x<mem[op0];x++) cs[0].local[x]=pcget();
+            if(opc>1 && mem[op0]>0) cs[0].local[0]=op1;
+            if(opc>2 && mem[op0]>1) cs[0].local[1]=op2;
+            if(opc>3 && mem[op0]>2) cs[0].local[2]=op3;
+          } else {
+            store(0);
+          }
+          break;
+        case 225: // PUT
+          this.put((op0+op1*2)&65535,op2);
+          break;
+        case 226: // PUTB
+          mem[(op0+op1)&65535]=op2;
+          break;
+        case 227: // PUTP
+          propfind();
+          if(mem[op3-1]&32) this.put(op3,op2);
+          else mem[op3]=op2;
+          break;
+        case 228: // READ
+          yield*this.genPrint("");
+          if(this.updateStatusLine) yield*this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+          this.handleInput(yield*this.read(mem[op0&65535]),op0&65535,op1&65535);
+          break;
+        case 229: // PRINTC
+          yield*this.genPrint(op0==13?"\n":op0?String.fromCharCode(op0):"");
+          break;
+        case 230: // PRINTN
+          yield*this.genPrint(String(op0));
+          break;
+        case 231: // RANDOM
+          if (op0 <= 0) {               // If 'op0' is non-positive, reseed the PRNG.
+            if (op0 === 0) {
+              initRng();                // If 0, seed using Math.random().
+            } else {
+              this.seed = (op0 >>> 0);  // If negative, seed with the specified value.
+            }
+            store(0);                   // Reseeding always returns 0.
+            break;
+          }
+          this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
+          store(Math.floor((this.seed / 0xFFFFFFFF) * op0) + 1);    // Return integer in range [1..op0] (inclusive).
+          break;
+        case 232: // PUSH
+          ds.push(op0);
+          break;
+        case 233: // POP
+          xstore(op0,ds.pop());
+          break;
+        case 234: // SPLIT
+          if(this.split) yield*this.split(op0);
+          break;
+        case 235: // SCREEN
+          if(this.screen) yield*this.screen(op0);
+          break;
+        default:
+          throw new Error("JSZM: Invalid Z-machine opcode");
+      }
+    }
+
+  },
+  save: ()=>[],
+  savedFlags: 0,
+  selfInsertingBreaks: null,
+  serial: null,
+  serialize: function(ds,cs,pc) {
+    var i,j,e,ar,vi;
+    e=this.getu(14); // PURBOT
+    i=e+cs.reduce((p,c)=>p+2*(c.ds.length+c.local.length)+6,0)+2*ds.length+8;
+    ar=new Uint8Array(i);
+    ar.set(new Uint8Array(this.mem.buffer,0,e));
+    vi=new DataView(ar.buffer);
+    vi.setUint32(e,pc);
+    vi.setUint16(e+4,cs.length);
+    vi.setUint16(e+6,ds.length);
+    for(i=0;i<ds.length;i++) vi.setInt16(e+i*2+8,ds[i]);
+    e+=ds.length*2+8;
+    for(i=0;i<cs.length;i++) {
+      vi.setUint32(e,cs[i].pc);
+      vi.setUint8(e,cs[i].local.length);
+      vi.setUint16(e+4,cs[i].ds.length);
+      for(j=0;j<cs[i].ds.length;j++) vi.setInt16(e+j*2+6,cs[i].ds[j]);
+      for(j=0;j<cs[i].local.length;j++) vi.setInt16(e+cs[i].ds.length*2+j*2+6,cs[i].local[j]);
+      e+=(cs[i].ds.length+cs[i].local.length)*2+6;
+    }
+    return ar;
+  },
+  screen: null,
+  split: null,
+  statusType: null,
+  updateStatusLine: null,
+  verify: function() {
+    var plenth=this.getu(26);
+    var pchksm=this.getu(28);
+    var i=64;
+    while(i<plenth*2) pchksm=(pchksm-this.memInit[i++])&65535;
+    return !pchksm;
+  },
+  view: null,
+  vocabulary: null,
+  zorkid: null,
+};
+
+JSZM.version=JSZM_Version;
+
+try {
+  if(module && module.exports) module.exports=JSZM;
+} catch(e) {}
+</script>
+
+<script>const Z3_B64 = "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";</script>
+
+<script>
+const GAME = { key: "catseye", title: "Cat's Eye" };
+const RITUAL_LINES = [["\u00b7 \u00b7 \u00b7 \u00b7", "dim"], ["  (something is watching from the corner)", "br"], ["// 2007 \u77ed\u4f5c \u00b7 10KB \u4e00\u6b21\u73a9\u5b8c", "dim"]];
+const SUB_TITLE = "something is watching you";
+
+const screen = document.getElementById('screen');
+const promptEl = document.getElementById('prompt');
+const inputEl = document.getElementById('input');
+
+function escHtml(s) {
+  return String(s).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+}
+function append(text, cls) {
+  if (cls) screen.innerHTML += '<span class="' + cls + '">' + escHtml(text) + '</span>';
+  else screen.innerHTML += escHtml(text);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+function appendRaw(html) {
+  screen.innerHTML += html;
+  window.scrollTo(0, document.body.scrollHeight);
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function showRitualAndStart() {
+  appendRaw('\n<span class="br">' + escHtml(GAME.title) + '</span> · <span class="dim">' + escHtml(SUB_TITLE) + '</span>\n\n');
+  for (const [text, cls] of RITUAL_LINES) {
+    await sleep(450 + Math.random() * 250);
+    append(text + '\n', cls);
+  }
+  await sleep(700);
+  appendRaw('\n<span class="dim">[ initializing Z-machine ... ]</span>\n\n');
+  startGame();
+}
+
+function startGame() {
+  document.getElementById('status-time').textContent = '~~ loading ~~';
+  let bytes;
+  try {
+    const binStr = atob(Z3_B64);
+    bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+  } catch (e) {
+    appendRaw('<span class="red">[ FAILED: ' + escHtml(e.message) + ' ]</span>\n');
+    return;
+  }
+
+  const game = new JSZM(bytes);
+  let inputResolver = null;
+  function waitForInput() {
+    return new Promise(r => {
+      inputResolver = r;
+      promptEl.style.display = 'flex';
+      inputEl.focus();
+    });
+  }
+  inputEl.onkeydown = (e) => {
+    if (e.key === 'Enter' && inputResolver) {
+      const v = inputEl.value;
+      appendRaw('<span class="player">&gt; ' + escHtml(v) + '</span>\n');
+      inputEl.value = '';
+      promptEl.style.display = 'none';
+      const r = inputResolver; inputResolver = null; r(v);
+    }
+  };
+
+  game.print = function*(text, scripting) { append(text); };
+  game.read = function*(maxlen) {
+    const v = yield waitForInput();
+    return (v || '').slice(0, maxlen || 120);
+  };
+  game.save = function*(buf) {
+    try {
+      localStorage.setItem('noclip-zork-' + GAME.key, JSON.stringify(Array.from(buf)));
+      append('\n[ save ok ]\n', 'dim'); return true;
+    } catch(e) { append('\n[ save failed ]\n', 'red'); return false; }
+  };
+  game.restore = function*() {
+    try {
+      const arr = JSON.parse(localStorage.getItem('noclip-zork-' + GAME.key));
+      if (!arr) { append('\n[ no save ]\n', 'red'); return null; }
+      append('\n[ restored ]\n', 'dim');
+      return new Uint8Array(arr);
+    } catch(e) { append('\n[ restore failed ]\n', 'red'); return null; }
+  };
+
+  const runner = game.run();
+  document.getElementById('status-time').textContent = '~~ in story ~~';
+
+  async function pump(value) {
+    let r;
+    try { r = runner.next(value); }
+    catch (e) {
+      append('\n[ runtime error: ' + e.message + ' ]\n', 'red');
+      console.error(e); return;
+    }
+    if (r.done) {
+      document.getElementById('status-time').textContent = '~~ ended ~~';
+      append('\n\n[ Z-machine halted. ESC to exit. ]\n', 'dim');
+      return;
+    }
+    const v = r.value;
+    if (v && typeof v.then === 'function') { await pump(await v); }
+    else { setTimeout(() => pump(v), 0); }
+  }
+  pump(undefined);
+}
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'if-' + GAME.key }, '*');
+  } else {
+    if (confirm('QUIT and leave?')) window.close();
+  }
+}
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitRoom();
+});
+
+showRitualAndStart();
+</script>
+
+</body>
+</html>

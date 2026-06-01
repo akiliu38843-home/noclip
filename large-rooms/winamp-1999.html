@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Winamp 2.91 · 1999/03/14 03:47</title>
+<style>
+/* ============================================================
+   Winamp 1999 · 大房间 v0.1 (skeleton)
+   骨架: Win98 桌面 (teal 蓝绿) + webamp 居中 + Y2K 桌面装饰
+   webamp: captbaritone/webamp MIT · CDN bundle
+   配色: Win98 #008080 桌面绿蓝, 任务栏 #c0c0c0 浅灰, 时钟 #000
+   vibe: 凌晨 3 点 · 别人家的 win98 还开着 · winamp 循环播放
+============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'MS Sans Serif', Tahoma, sans-serif;
+  font-size: 11px;
+  color: #000;
+  -webkit-font-smoothing: none;
+}
+
+/* Win98 桌面 */
+body {
+  background: #008080;
+  position: relative;
+}
+
+/* 桌面图标 */
+.desktop-icons {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 2;
+}
+.desk-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 76px;
+  text-align: center;
+  cursor: default;
+  user-select: none;
+  padding: 4px;
+}
+.desk-icon:hover .label {
+  background: #0a246a;
+  color: #fff;
+  outline: 1px dotted #fff;
+}
+.desk-icon .ico {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 2px;
+  filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.3));
+}
+.desk-icon .label {
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 3px;
+  text-shadow: 1px 1px 0 #000;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+/* 屏幕中央的"备忘提示" sticky note */
+.sticky-note {
+  position: absolute;
+  top: 50%;
+  right: 60px;
+  transform: translateY(-50%) rotate(4deg);
+  background: #ffff88;
+  width: 180px;
+  padding: 12px;
+  font-family: 'Comic Sans MS', cursive;
+  font-size: 12px;
+  color: #444;
+  box-shadow: 2px 4px 6px rgba(0,0,0,0.4);
+  z-index: 3;
+  line-height: 1.4;
+}
+.sticky-note .pin {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle at 5px 5px, #ff5555, #aa0000);
+  border-radius: 50%;
+  border: 1px solid #800;
+}
+
+/* Win98 任务栏 */
+.taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: #c0c0c0;
+  border-top: 1px solid #fff;
+  box-shadow: inset 0 1px 0 #dfdfdf;
+  display: flex;
+  align-items: center;
+  padding: 2px 0 2px 2px;
+  z-index: 10;
+  user-select: none;
+}
+.start-btn {
+  background: #c0c0c0;
+  border: 1px outset #fff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  padding: 2px 6px 2px 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  height: 22px;
+}
+.start-btn:active { border-style: inset; }
+.start-btn .start-flag {
+  background: linear-gradient(135deg, #ff0000 0%, #ff0000 25%, #00ff00 25%, #00ff00 50%, #0000ff 50%, #0000ff 75%, #ffff00 75%);
+  width: 14px;
+  height: 14px;
+  border-radius: 1px;
+}
+.taskbar-divider {
+  width: 2px;
+  height: 22px;
+  background: #808080;
+  box-shadow: 1px 0 0 #fff;
+  margin: 0 4px;
+}
+.taskbar-app {
+  background: #c0c0c0;
+  border: 1px outset #fff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  padding: 2px 8px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  margin-left: 2px;
+}
+.taskbar-app.active {
+  border-style: inset;
+  background: #d4d0c8;
+}
+.taskbar-clock {
+  margin-left: auto;
+  margin-right: 4px;
+  background: #c0c0c0;
+  border: 1px inset #fff;
+  padding: 2px 10px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+/* webamp 容器 */
+#webamp-root {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+}
+
+/* 启动仪式 */
+#ritual {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: monospace;
+}
+#ritual.hide { display: none; }
+.ritual-line {
+  font-size: 14px;
+  margin: 4px 0;
+  opacity: 0;
+}
+.ritual-line.show { opacity: 1; transition: opacity 0.2s; }
+.ritual-line.dim { color: #888; }
+.ritual-line .ok { color: #4af04a; }
+
+/* 退出按钮 */
+.exit-hint {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  background: #c0c0c0;
+  border: 1px outset #fff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  padding: 3px 10px;
+  font: 11px 'MS Sans Serif';
+  cursor: pointer;
+  z-index: 100;
+}
+.exit-hint:hover { background: #d4d0c8; }
+.exit-hint:active { border-style: inset; }
+
+@media (max-width: 720px) {
+  .sticky-note { display: none; }
+  .desktop-icons { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- 启动仪式 -->
+<div id="ritual">
+  <div class="ritual-line" id="r1">Resuming Windows 98...</div>
+  <div class="ritual-line dim" id="r2">Restoring user session...</div>
+  <div class="ritual-line dim" id="r3">> <span class="ok">winamp.exe</span> still running from 1999-03-14 03:47</div>
+  <div class="ritual-line dim" id="r4">> 8 hours uptime · no user activity</div>
+  <div class="ritual-line dim" id="r5">> loading playlist...</div>
+</div>
+
+<!-- 桌面图标 -->
+<div class="desktop-icons">
+  <div class="desk-icon"><div class="ico">💻</div><div class="label">My Computer</div></div>
+  <div class="desk-icon"><div class="ico">🗑️</div><div class="label">Recycle Bin</div></div>
+  <div class="desk-icon"><div class="ico">🌐</div><div class="label">Internet Explorer</div></div>
+  <div class="desk-icon"><div class="ico">📁</div><div class="label">My Documents</div></div>
+  <div class="desk-icon"><div class="ico">🎵</div><div class="label">Winamp 2.91</div></div>
+  <div class="desk-icon"><div class="ico">💬</div><div class="label">ICQ 99a</div></div>
+  <div class="desk-icon"><div class="ico">📝</div><div class="label">homework.doc</div></div>
+</div>
+
+<!-- 屏幕上的便利贴 -->
+<div class="sticky-note">
+  <div class="pin"></div>
+  Mom — gone to work,<br>
+  pls don't turn off the<br>
+  computer or close winamp<br>
+  i'm downloading a song!!!<br>
+  <br>
+  back at 8 :)
+</div>
+
+<!-- webamp 渲染槽 -->
+<div id="webamp-root"></div>
+
+<!-- 任务栏 -->
+<div class="taskbar">
+  <button class="start-btn">
+    <span class="start-flag"></span>
+    <span>Start</span>
+  </button>
+  <div class="taskbar-divider"></div>
+  <div class="taskbar-app active">🎵 Winamp</div>
+  <div class="taskbar-app">💬 ICQ 99a</div>
+  <div class="taskbar-clock">
+    <span style="color: #007">📢</span>
+    <span id="clock">3:47 AM</span>
+  </div>
+</div>
+
+<button class="exit-hint" onclick="exitRoom()" title="ESC to leave">[ Log Off ]</button>
+
+<!-- CC attribution (角落 12px 小字) -->
+<div style="position:fixed; bottom:32px; left:8px; color:rgba(255,255,255,0.45); font-size:10px; font-family:monospace; line-height:1.4; z-index:50; max-width:380px;">
+  Music: Malaventura "03246am" (CC0) · The_Empath "Subroom Message" (CC BY-SA 3.0 DE) · Bordo "Orientalny" (CC BY 3.0) · fast idio "He Made Me Eat Grass" (CC BY-SA 3.0) · Exist "Straight Between Your Eyes" (CC BY 2.5 CA) · Wizard Master "Molten Slag Action" (CC BY 2.5) · The Weather Underground "Live at Jitters" (CC BY-SA 3.0 US) · all from archive.org/details/netlabels
+</div>
+
+<script src="https://unpkg.com/webamp@1.5.0/built/webamp.bundle.min.js"></script>
+<script>
+// ============================================================
+// 曲目数据 · 7 首 CC 授权 mp3 (1999-2002 netlabel scene, archive.org)
+// 全部直链 200 OK · 全部 BY/BY-SA/CC0 (无 NC 无 ND)
+// ============================================================
+const TRACKS = [
+  { metaData: { artist: 'Malaventura', title: '03246am' },
+    url: 'https://archive.org/download/malaventura01/03246am.mp3', duration: 301 },
+  { metaData: { artist: 'The_Empath', title: 'Subroom Message' },
+    url: 'https://archive.org/download/nr002/NR002-09_-_Subroom_Messsage-The_Empath_-_Subroom_Message.mp3', duration: 349 },
+  { metaData: { artist: 'Bordo', title: 'Orientalny' },
+    url: 'https://archive.org/download/rj002-bordo-brzmi-wewnatrz-1999/rj002_03_orientalny.mp3', duration: 240 },
+  { metaData: { artist: 'fast idio', title: 'He Made Me Eat Grass' },
+    url: 'https://archive.org/download/enrmp016_fast_idio_-_he_made_me_eat_grass/fast_idio_-_he_made_me_eat_grass.mp3', duration: 290 },
+  { metaData: { artist: 'Exist', title: 'Straight Between Your Eyes' },
+    url: 'https://archive.org/download/DTRASH31-Exist-TheTensionAndTheDarkness/dtrash31_04_straight_between_your_eyes__can_t_vbr.mp3', duration: 226 },
+  { metaData: { artist: 'Wizard Master', title: 'Molten Slag Action' },
+    url: 'https://archive.org/download/WizardMasterCodexOfMightyCommand/MoltenSlagAction.mp3', duration: 287 },
+  { metaData: { artist: 'The Weather Underground', title: 'Live at Jitters · Track 1' },
+    url: 'https://archive.org/download/Tsm005-TheWeatherUnderground-LiveAtJitters/1.mp3', duration: 282 }
+];
+
+// 仪式动画
+async function playRitual() {
+  for (let i = 1; i <= 5; i++) {
+    await sleep(400 + Math.random() * 300);
+    document.getElementById('r' + i).classList.add('show');
+  }
+  await sleep(700);
+  document.getElementById('ritual').classList.add('hide');
+  initWebamp();
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function initWebamp() {
+  // 时钟假冒 1999-03-14 03:47
+  document.getElementById('clock').textContent = '3:47 AM';
+  setInterval(() => {
+    const d = new Date();
+    const h = d.getHours() % 12 || 12;
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+    // 偶尔回到 1999, 偶尔显真实时间, 像故障
+    if (Math.random() > 0.7) {
+      document.getElementById('clock').textContent = '3:47 AM';
+    } else {
+      document.getElementById('clock').textContent = `${h}:${m} ${ampm}`;
+    }
+  }, 5000);
+
+  if (typeof Webamp === 'undefined') {
+    document.getElementById('webamp-root').innerHTML =
+      '<div style="background:#c0c0c0;padding:20px;border:2px outset #fff;font-family:monospace;color:#000;">' +
+      'webamp.bundle.min.js 加载失败 (网络问题?)<br>' +
+      '<button onclick="location.reload()" style="margin-top:8px;">重试</button></div>';
+    return;
+  }
+
+  const webamp = new Webamp({
+    initialTracks: TRACKS,
+    initialSkin: undefined  // 默认 base skin (经典 winamp 2 视觉)
+  });
+
+  webamp.renderWhenReady(document.getElementById('webamp-root')).then(() => {
+    console.log('webamp ready');
+  });
+
+  // 监听 close — webamp 自己的 × 触发我们的 exit
+  webamp.onClose(() => {
+    exitRoom();
+  });
+}
+
+function exitRoom() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'nextDoor', from: 'winamp-1999' }, '*');
+  } else {
+    if (confirm('Log off and leave?')) window.close();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitRoom();
+});
+
+// 启动
+playRitual();
+</script>
+
+</body>
+</html>
